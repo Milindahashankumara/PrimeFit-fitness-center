@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-red: #D90429;
+  --color-brand-dark: #080808;
+  --color-brand-gray: #1F1F1F;
+  
+  --font-family-sans: Inter, sans-serif;
+}
+
+body {
+  background: #080808;
+  color: white;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for that sleek look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #080808;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D90429;
+}
+
+/* Hero Pattern Background */
+.bg-hero-pattern {
+  background-image: linear-gradient(to right, rgba(0,0,0,0.9), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+}
