@@ -1,0 +1,220 @@
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+        timestamps()
+    }
+
+    parameters {
+        string(name: 'GIT_BRANCH', defaultValue: 'dev', description: 'Git branch to build')
+        booleanParam(name: 'PUSH_IMAGES', defaultValue: true, description: 'Push Docker images to Docker Hub')
+        booleanParam(name: 'DEPLOY_ON_MAIN', defaultValue: true, description: 'Deploy application when building main branch')
+        booleanParam(name: 'STRICT_QUALITY_GATE', defaultValue: false, description: 'Fail pipeline on lint/test errors')
+    }
+
+    environment {
+        REPOSITORY_URL = 'https://github.com/Milindahashankumara/PrimeFit-fitness-center.git'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
+
+        DOCKERHUB_ORG = 'milindahashankumara'
+        BACKEND_IMAGE = "${DOCKERHUB_ORG}/primefit-backend"
+        FRONTEND_IMAGE = "${DOCKERHUB_ORG}/primefit-frontend"
+
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        BRANCH_TAG = "${params.GIT_BRANCH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                retry(3) {
+                    git branch: "${params.GIT_BRANCH}", url: "${REPOSITORY_URL}"
+                }
+            }
+        }
+
+        stage('Quality Checks') {
+            parallel {
+                stage('Backend') {
+                    steps {
+                        dir('fitness_center-backend') {
+                            script {
+                                def npmInstallCmd = fileExists('package-lock.json') ? 'npm ci' : 'npm install'
+                                if (isUnix()) {
+                                    sh npmInstallCmd
+                                    def lintStatus = sh(script: 'npm run lint --if-present', returnStatus: true)
+                                    if (lintStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Backend lint failed.')
+                                        }
+                                        echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+
+                                    def testStatus = sh(script: 'npm test --if-present', returnStatus: true)
+                                    if (testStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Backend tests failed.')
+                                        }
+                                        echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+                                } else {
+                                    bat npmInstallCmd
+                                    def lintStatus = bat(script: 'npm run lint --if-present', returnStatus: true)
+                                    if (lintStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Backend lint failed.')
+                                        }
+                                        echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+
+                                    def testStatus = bat(script: 'npm test --if-present', returnStatus: true)
+                                    if (testStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Backend tests failed.')
+                                        }
+                                        echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('Frontend') {
+                    steps {
+                        dir('fitness_center-frontend') {
+                            script {
+                                def npmInstallCmd = fileExists('package-lock.json') ? 'npm ci' : 'npm install'
+                                if (isUnix()) {
+                                    sh npmInstallCmd
+                                    def lintStatus = sh(script: 'npm run lint --if-present', returnStatus: true)
+                                    if (lintStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Frontend lint failed.')
+                                        }
+                                        echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+                                    sh 'npm run build --if-present'
+                                } else {
+                                    bat npmInstallCmd
+                                    def lintStatus = bat(script: 'npm run lint --if-present', returnStatus: true)
+                                    if (lintStatus != 0) {
+                                        if (params.STRICT_QUALITY_GATE) {
+                                            error('Frontend lint failed.')
+                                        }
+                                        echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    }
+                                    bat 'npm run build --if-present'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f fitness_center-backend/Dockerfile fitness_center-backend"
+                        sh "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f fitness_center-frontend/Dockerfile fitness_center-frontend"
+                    } else {
+                        bat "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f fitness_center-backend/Dockerfile fitness_center-backend"
+                        bat "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f fitness_center-frontend/Dockerfile fitness_center-frontend"
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            when {
+                expression { return params.PUSH_IMAGES && params.GIT_BRANCH == 'main' }
+            }
+            steps {
+                script {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_TOKEN')]) {
+                            if (isUnix()) {
+                                sh 'echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin'
+
+                                sh "docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:${BRANCH_TAG}"
+                                sh "docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:${BRANCH_TAG}"
+                                sh "docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest"
+                                sh "docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest"
+
+                                sh "docker push ${BACKEND_IMAGE}:${IMAGE_TAG}"
+                                sh "docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}"
+                                sh "docker push ${BACKEND_IMAGE}:${BRANCH_TAG}"
+                                sh "docker push ${FRONTEND_IMAGE}:${BRANCH_TAG}"
+                                sh "docker push ${BACKEND_IMAGE}:latest"
+                                sh "docker push ${FRONTEND_IMAGE}:latest"
+                            } else {
+                                bat '@echo %DOCKERHUB_TOKEN%| docker login -u %DOCKERHUB_USER% --password-stdin'
+
+                                bat "docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:${BRANCH_TAG}"
+                                bat "docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:${BRANCH_TAG}"
+                                bat "docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest"
+                                bat "docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest"
+
+                                bat "docker push ${BACKEND_IMAGE}:${IMAGE_TAG}"
+                                bat "docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}"
+                                bat "docker push ${BACKEND_IMAGE}:${BRANCH_TAG}"
+                                bat "docker push ${FRONTEND_IMAGE}:${BRANCH_TAG}"
+                                bat "docker push ${BACKEND_IMAGE}:latest"
+                                bat "docker push ${FRONTEND_IMAGE}:latest"
+                            }
+                        }
+                    } catch (Exception ex) {
+                        unstable("Skipping Docker push: Jenkins credential not found or invalid (ID: ${env.DOCKER_CREDENTIALS_ID}).")
+                        echo "Push stage skipped safely. Configure Jenkins credentials ID '${env.DOCKER_CREDENTIALS_ID}' to enable image push."
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                expression { return params.GIT_BRANCH == 'main' && params.DEPLOY_ON_MAIN }
+            }
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'docker compose down || true'
+                        sh 'docker compose up -d --build'
+                    } else {
+                        bat 'docker compose down >nul 2>&1 || exit /b 0'
+                        bat 'docker compose up -d --build'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                if (isUnix()) {
+                    sh 'docker logout || true'
+                    sh 'docker image prune -f || true'
+                } else {
+                    bat 'docker logout >nul 2>&1 || exit /b 0'
+                    bat 'docker image prune -f >nul 2>&1 || exit /b 0'
+                }
+            }
+        }
+
+        success {
+            echo "Build ${BUILD_NUMBER} completed successfully."
+            echo "Backend image: ${BACKEND_IMAGE}:${IMAGE_TAG}"
+            echo "Frontend image: ${FRONTEND_IMAGE}:${IMAGE_TAG}"
+        }
+
+        failure {
+            echo 'Build failed. Check logs for details.'
+        }
+    }
+}
