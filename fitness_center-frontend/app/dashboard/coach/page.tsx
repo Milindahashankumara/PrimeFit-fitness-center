@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AuthAPI, BookingsAPI } from '@/app/lib/api';
-import { 
-  Users, 
-  Calendar, 
-  MessageSquare, 
-  DollarSign, 
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Announcement,
+  AnnouncementsAPI,
+  AuthAPI,
+  BookingsAPI,
+  FeedbackAPI,
+} from "@/app/lib/api";
+import {
+  Users,
+  Calendar,
+  MessageSquare,
+  DollarSign,
   LogOut,
   TrendingUp,
   Clock,
@@ -15,12 +21,13 @@ import {
   Video,
   Settings,
   ClipboardList,
-  AlertCircle
-} from 'lucide-react';
-import Link from 'next/link';
+  AlertCircle,
+} from "lucide-react";
+import Link from "next/link";
 
 interface UserData {
   _id?: string;
+  id?: string;
   name: string;
   email: string;
   role: string;
@@ -32,58 +39,193 @@ interface UserData {
   isAuthenticated: boolean;
 }
 
+interface DashboardStats {
+  activeClients: number;
+  sessionsThisWeek: number;
+  revenueThisMonth: number;
+  revenueChangePercent: number;
+  averageRating: number;
+  ratingCount: number;
+}
+
+const getWeekStart = (date: Date): Date => {
+  const result = new Date(date);
+  const day = result.getDay();
+  const diff = result.getDate() - day + (day === 0 ? -6 : 1);
+  result.setDate(diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const getMonthStart = (date: Date): Date => {
+  const result = new Date(date.getFullYear(), date.getMonth(), 1);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const getPreviousMonthStart = (date: Date): Date => {
+  const result = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
 const CoachDashboard = () => {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [todayBookings, setTodayBookings] = useState<any[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    activeClients: 0,
+    sessionsThisWeek: 0,
+    revenueThisMonth: 0,
+    revenueChangePercent: 0,
+    averageRating: 0,
+    ratingCount: 0,
+  });
 
   useEffect(() => {
     loadUserData();
-    loadTodaySchedule();
+    loadAnnouncements();
   }, [router]);
 
-  const loadTodaySchedule = async () => {
+  useEffect(() => {
+    if (!user?._id && !user?.id) {
+      return;
+    }
+
+    loadCoachPerformanceData(user._id || user.id || "");
+  }, [user]);
+
+  const loadCoachPerformanceData = async (coachId: string) => {
     try {
       setLoadingBookings(true);
-      // Get all bookings for this coach
-      const allBookings = await BookingsAPI.getAll();
-      
-      // Filter for today's accepted/rescheduled bookings
-      const today = new Date().toISOString().split('T')[0];
+
+      const [allBookings, feedback] = await Promise.all([
+        BookingsAPI.getByCoach(coachId),
+        FeedbackAPI.getByCoach(coachId),
+      ]);
+
+      const today = new Date().toISOString().split("T")[0];
       const todaysBookings = allBookings
-        .filter(booking => {
-          const bookingDate = new Date(booking.date).toISOString().split('T')[0];
-          return bookingDate === today && (booking.status === 'accepted' || booking.status === 'rescheduled');
+        .filter((booking) => {
+          const bookingDate = new Date(booking.date)
+            .toISOString()
+            .split("T")[0];
+          return (
+            bookingDate === today &&
+            (booking.status === "accepted" || booking.status === "rescheduled")
+          );
         })
         .sort((a, b) => {
-          // Sort by time
-          const timeA = a.time || '00:00';
-          const timeB = b.time || '00:00';
+          const timeA = a.time || "00:00";
+          const timeB = b.time || "00:00";
           return timeA.localeCompare(timeB);
         });
-      
+
+      const now = new Date();
+      const weekStart = getWeekStart(now);
+      const monthStart = getMonthStart(now);
+      const previousMonthStart = getPreviousMonthStart(now);
+
+      const activeStatuses = new Set([
+        "accepted",
+        "completed",
+        "rescheduled",
+        "pending",
+      ]);
+
+      const activeClientKeys = new Set(
+        allBookings
+          .filter((booking) => activeStatuses.has(booking.status))
+          .map(
+            (booking) =>
+              booking.customerEmail || booking.customerId || booking.customerName,
+          )
+          .filter(Boolean),
+      );
+
+      const sessionsThisWeek = allBookings.filter((booking) => {
+        const bookingDate = new Date(booking.date);
+        bookingDate.setHours(0, 0, 0, 0);
+        return (
+          bookingDate >= weekStart &&
+          bookingDate <= now &&
+          activeStatuses.has(booking.status)
+        );
+      }).length;
+
+      const revenueThisMonth = allBookings
+        .filter((booking) => {
+          const bookingDate = new Date(booking.date);
+          bookingDate.setHours(0, 0, 0, 0);
+          return bookingDate >= monthStart && booking.status === "completed";
+        })
+        .reduce((total, booking) => total + (Number(booking.price) || 0), 0);
+
+      const revenuePreviousMonth = allBookings
+        .filter((booking) => {
+          const bookingDate = new Date(booking.date);
+          bookingDate.setHours(0, 0, 0, 0);
+          return (
+            bookingDate >= previousMonthStart &&
+            bookingDate < monthStart &&
+            booking.status === "completed"
+          );
+        })
+        .reduce((total, booking) => total + (Number(booking.price) || 0), 0);
+
+      const revenueChangePercent =
+        revenuePreviousMonth > 0
+          ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) * 100
+          : revenueThisMonth > 0
+            ? 100
+            : 0;
+
+      const approvedRatings = feedback
+        .filter((item) => item.status === "approved")
+        .map((item) => Number(item.rating) || 0)
+        .filter((rating) => rating > 0);
+
+      const averageRating =
+        approvedRatings.length > 0
+          ? approvedRatings.reduce((sum, rating) => sum + rating, 0) /
+            approvedRatings.length
+          : Number(user?.rating) || 0;
+
+      const fallbackActiveClients = Number(user?.activeClients) || 0;
+      const fallbackAverageRating = Number(user?.rating) || 0;
+
       setTodayBookings(todaysBookings);
-      setLoadingBookings(false);
+      setDashboardStats({
+        activeClients: Math.max(activeClientKeys.size, fallbackActiveClients),
+        sessionsThisWeek,
+        revenueThisMonth,
+        revenueChangePercent,
+        averageRating: averageRating || fallbackAverageRating,
+        ratingCount: approvedRatings.length,
+      });
     } catch (error) {
-      console.error('Failed to load today\'s schedule:', error);
-      setLoadingBookings(false);
+      console.error("Failed to load coach dashboard data:", error);
+      setTodayBookings([]);
     }
+    setLoadingBookings(false);
   };
 
   const loadUserData = async () => {
     try {
       // First check localStorage
-      const userData = localStorage.getItem('user');
+      const userData = localStorage.getItem("user");
       if (!userData) {
-        router.push('/auth/login');
+        router.push("/auth/login");
         return;
       }
 
       const parsedUser = JSON.parse(userData);
-      if (parsedUser.role !== 'coach') {
-        router.push('/auth/login');
+      if (parsedUser.role !== "coach") {
+        router.push("/auth/login");
         return;
       }
 
@@ -92,15 +234,15 @@ const CoachDashboard = () => {
       if (currentUser) {
         setUser(currentUser);
         // Update localStorage with fresh data
-        localStorage.setItem('user', JSON.stringify(currentUser));
+        localStorage.setItem("user", JSON.stringify(currentUser));
       } else {
         setUser(parsedUser);
       }
       setLoading(false);
     } catch (error) {
-      console.error('Failed to load user data:', error);
+      console.error("Failed to load user data:", error);
       // Fallback to localStorage data
-      const userData = localStorage.getItem('user');
+      const userData = localStorage.getItem("user");
       if (userData) {
         setUser(JSON.parse(userData));
       }
@@ -108,9 +250,24 @@ const CoachDashboard = () => {
     }
   };
 
+  const loadAnnouncements = async () => {
+    try {
+      setAnnouncementsLoading(true);
+      const data = await AnnouncementsAPI.getAll({
+        targetAudience: 'coaches',
+        status: 'published',
+      });
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Failed to load announcements:', error);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
+    localStorage.removeItem("user");
+    router.push("/");
   };
 
   if (loading) {
@@ -127,7 +284,8 @@ const CoachDashboard = () => {
       <header className="bg-brand-gray border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold">
-            Prime<span className="text-brand-red">Fit</span> <span className="text-sm text-gray-400">Coach Portal</span>
+            Prime<span className="text-brand-red">Fit</span>{" "}
+            <span className="text-sm text-gray-400">Coach Portal</span>
           </Link>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -150,25 +308,78 @@ const CoachDashboard = () => {
           <h1 className="text-4xl font-bold mb-2">
             Coach <span className="text-brand-red">{user?.name}</span>
           </h1>
-          <p className="text-gray-400">Manage your clients and track their progress</p>
+          <p className="text-gray-400">
+            Manage your clients and track their progress
+          </p>
+        </div>
+
+        <div className="bg-brand-gray p-6 rounded-xl mb-8">
+          <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
+            <ClipboardList className="text-brand-red" />
+            Coach Announcements
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Announcements targeted to coaches and all users will appear here.
+          </p>
+          <div className="space-y-3">
+            {announcementsLoading ? (
+              <div className="bg-black/40 p-4 rounded-lg text-sm text-gray-400">
+                Loading announcements...
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="bg-black/40 p-4 rounded-lg text-sm text-gray-400">
+                No coach announcements right now.
+              </div>
+            ) : (
+              announcements.slice(0, 3).map((announcement) => (
+                <div key={announcement._id || announcement.id || announcement.title} className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red">
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <h3 className="font-semibold line-clamp-1">{announcement.title}</h3>
+                    <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded capitalize whitespace-nowrap">
+                      {announcement.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 line-clamp-2">{announcement.content}</p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Quick Action Cards */}
         <div className="mb-8 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/dashboard/coach/profile" className="bg-gradient-to-br from-brand-red to-red-900 p-6 rounded-xl hover:shadow-xl hover:shadow-brand-red/20 transition-all group">
-            <Settings className="text-white mb-3 group-hover:scale-110 transition-transform" size={32} />
+          <Link
+            href="/dashboard/coach/profile"
+            className="bg-linear-to-br from-brand-red to-red-900 p-6 rounded-xl hover:shadow-xl hover:shadow-brand-red/20 transition-all group"
+          >
+            <Settings
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
             <h3 className="text-xl font-bold mb-1">My Profile</h3>
             <p className="text-white/80 text-sm">Update professional details</p>
           </Link>
-          
-          <Link href="/dashboard/coach/availability" className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-xl hover:shadow-xl hover:shadow-blue-500/20 transition-all group">
-            <Clock className="text-white mb-3 group-hover:scale-110 transition-transform" size={32} />
+
+          <Link
+            href="/dashboard/coach/availability"
+            className="bg-linear-to-br from-blue-600 to-blue-800 p-6 rounded-xl hover:shadow-xl hover:shadow-blue-500/20 transition-all group"
+          >
+            <Clock
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
             <h3 className="text-xl font-bold mb-1">Availability</h3>
             <p className="text-white/80 text-sm">Manage your schedule</p>
           </Link>
 
-          <Link href="/dashboard/coach/requests" className="bg-gradient-to-br from-yellow-600 to-yellow-800 p-6 rounded-xl hover:shadow-xl hover:shadow-yellow-500/20 transition-all group relative">
-            <AlertCircle className="text-white mb-3 group-hover:scale-110 transition-transform" size={32} />
+          <Link
+            href="/dashboard/coach/requests"
+            className="bg-linear-to-br from-yellow-600 to-yellow-800 p-6 rounded-xl hover:shadow-xl hover:shadow-yellow-500/20 transition-all group relative"
+          >
+            <AlertCircle
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
             <h3 className="text-xl font-bold mb-1">Requests</h3>
             <p className="text-white/80 text-sm">Review booking requests</p>
             <div className="absolute top-4 right-4 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
@@ -176,8 +387,14 @@ const CoachDashboard = () => {
             </div>
           </Link>
 
-          <Link href="/dashboard/coach/clients" className="bg-gradient-to-br from-purple-600 to-purple-800 p-6 rounded-xl hover:shadow-xl hover:shadow-purple-500/20 transition-all group">
-            <Users className="text-white mb-3 group-hover:scale-110 transition-transform" size={32} />
+          <Link
+            href="/dashboard/coach/clients"
+            className="bg-linear-to-br from-purple-600 to-purple-800 p-6 rounded-xl hover:shadow-xl hover:shadow-purple-500/20 transition-all group"
+          >
+            <Users
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
             <h3 className="text-xl font-bold mb-1">My Clients</h3>
             <p className="text-white/80 text-sm">View and manage clients</p>
           </Link>
@@ -188,9 +405,13 @@ const CoachDashboard = () => {
           <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-brand-red">
             <div className="flex items-center justify-between mb-4">
               <Users className="text-brand-red" size={32} />
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">+3</span>
+              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                Live
+              </span>
             </div>
-            <h3 className="text-3xl font-bold mb-1">42</h3>
+            <h3 className="text-3xl font-bold mb-1">
+              {dashboardStats.activeClients}
+            </h3>
             <p className="text-gray-400 text-sm">Active Clients</p>
           </div>
 
@@ -198,16 +419,23 @@ const CoachDashboard = () => {
             <div className="flex items-center justify-between mb-4">
               <Calendar className="text-blue-500" size={32} />
             </div>
-            <h3 className="text-3xl font-bold mb-1">18</h3>
+            <h3 className="text-3xl font-bold mb-1">
+              {dashboardStats.sessionsThisWeek}
+            </h3>
             <p className="text-gray-400 text-sm">Sessions This Week</p>
           </div>
 
           <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-yellow-500">
             <div className="flex items-center justify-between mb-4">
               <DollarSign className="text-yellow-500" size={32} />
-              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">+8%</span>
+              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">
+                {dashboardStats.revenueChangePercent >= 0 ? "+" : ""}
+                {dashboardStats.revenueChangePercent.toFixed(0)}%
+              </span>
             </div>
-            <h3 className="text-3xl font-bold mb-1">LKR 5,240</h3>
+            <h3 className="text-3xl font-bold mb-1">
+              LKR {dashboardStats.revenueThisMonth.toLocaleString()}
+            </h3>
             <p className="text-gray-400 text-sm">Monthly Earnings</p>
           </div>
 
@@ -215,7 +443,11 @@ const CoachDashboard = () => {
             <div className="flex items-center justify-between mb-4">
               <Star className="text-purple-500" size={32} />
             </div>
-            <h3 className="text-3xl font-bold mb-1">4.9</h3>
+            <h3 className="text-3xl font-bold mb-1">
+              {dashboardStats.averageRating > 0
+                ? dashboardStats.averageRating.toFixed(1)
+                : "0.0"}
+            </h3>
             <p className="text-gray-400 text-sm">Average Rating</p>
           </div>
         </div>
@@ -236,36 +468,58 @@ const CoachDashboard = () => {
               ) : todayBookings.length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="mx-auto mb-3 text-gray-500" size={48} />
-                  <p className="text-gray-400">No sessions scheduled for today</p>
-                  <p className="text-sm text-gray-500 mt-2">Enjoy your day off!</p>
+                  <p className="text-gray-400">
+                    No sessions scheduled for today
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Enjoy your day off!
+                  </p>
                 </div>
               ) : (
                 <>
                   {todayBookings.slice(0, 3).map((booking, index) => {
-                    const colors = ['border-brand-red bg-brand-red', 'border-blue-500 bg-blue-500', 'border-green-500 bg-green-500', 'border-purple-500 bg-purple-500', 'border-yellow-500 bg-yellow-500'];
+                    const colors = [
+                      "border-brand-red bg-brand-red",
+                      "border-blue-500 bg-blue-500",
+                      "border-green-500 bg-green-500",
+                      "border-purple-500 bg-purple-500",
+                      "border-yellow-500 bg-yellow-500",
+                    ];
                     const color = colors[index % colors.length];
-                    
+
                     return (
-                      <div key={booking._id || index} className={`bg-black/40 p-4 rounded-lg border-l-4 ${color.split(' ')[0]}`}>
+                      <div
+                        key={booking._id || index}
+                        className={`bg-black/40 p-4 rounded-lg border-l-4 ${color.split(" ")[0]}`}
+                      >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-bold">{booking.customerName || 'Unknown Client'}</h3>
-                            <p className="text-sm text-gray-400">{booking.sessionType || booking.type}</p>
-                            {booking.status === 'rescheduled' && (
-                              <p className="text-xs text-yellow-400 mt-1">⚠️ Rescheduled</p>
+                            <h3 className="font-bold">
+                              {booking.customerName || "Unknown Client"}
+                            </h3>
+                            <p className="text-sm text-gray-400">
+                              {booking.sessionType || booking.type}
+                            </p>
+                            {booking.status === "rescheduled" && (
+                              <p className="text-xs text-yellow-400 mt-1">
+                                Rescheduled
+                              </p>
                             )}
                           </div>
-                          <span className={`${color.split(' ')[1]} px-2 py-1 rounded text-xs font-semibold`}>
-                            {booking.time || 'TBD'}
+                          <span
+                            className={`${color.split(" ")[1]} px-2 py-1 rounded text-xs font-semibold`}
+                          >
+                            {booking.time || "TBD"}
                           </span>
                         </div>
                       </div>
                     );
                   })}
-                  
+
                   {todayBookings.length > 3 && (
                     <p className="text-center text-sm text-gray-400 pt-2">
-                      +{todayBookings.length - 3} more session{todayBookings.length - 3 > 1 ? 's' : ''}
+                      +{todayBookings.length - 3} more session
+                      {todayBookings.length - 3 > 1 ? "s" : ""}
                     </p>
                   )}
                 </>
@@ -309,7 +563,9 @@ const CoachDashboard = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">Emily Davis</h3>
-                    <p className="text-sm text-gray-400">Last session: Yesterday</p>
+                    <p className="text-sm text-gray-400">
+                      Last session: Yesterday
+                    </p>
                   </div>
                 </div>
                 <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition-colors">
@@ -324,7 +580,9 @@ const CoachDashboard = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">Michael Brown</h3>
-                    <p className="text-sm text-gray-400">Last session: 2 days ago</p>
+                    <p className="text-sm text-gray-400">
+                      Last session: 2 days ago
+                    </p>
                   </div>
                 </div>
                 <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition-colors">
@@ -350,7 +608,9 @@ const CoachDashboard = () => {
                   <h3 className="font-semibold">Sarah Wilson</h3>
                   <span className="text-xs text-gray-400">10 min ago</span>
                 </div>
-                <p className="text-sm text-gray-400">Can we reschedule tomorrow&apos;s session?</p>
+                <p className="text-sm text-gray-400">
+                  Can we reschedule tomorrow&apos;s session?
+                </p>
               </div>
 
               <div className="bg-black/40 p-4 rounded-lg">
@@ -358,7 +618,9 @@ const CoachDashboard = () => {
                   <h3 className="font-semibold">Tom Anderson</h3>
                   <span className="text-xs text-gray-400">1 hour ago</span>
                 </div>
-                <p className="text-sm text-gray-400">Thanks for the workout plan! 💪</p>
+                <p className="text-sm text-gray-400">
+                  Thanks for the workout plan!
+                </p>
               </div>
 
               <button className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors">
@@ -380,7 +642,10 @@ const CoachDashboard = () => {
                   <span className="text-sm font-semibold">58 / 60</span>
                 </div>
                 <div className="w-full bg-black/40 rounded-full h-3">
-                  <div className="bg-brand-red h-3 rounded-full" style={{ width: '96.67%' }}></div>
+                  <div
+                    className="bg-brand-red h-3 rounded-full"
+                    style={{ width: "96.67%" }}
+                  ></div>
                 </div>
               </div>
 
@@ -390,7 +655,10 @@ const CoachDashboard = () => {
                   <span className="text-sm font-semibold">95%</span>
                 </div>
                 <div className="w-full bg-black/40 rounded-full h-3">
-                  <div className="bg-green-500 h-3 rounded-full" style={{ width: '95%' }}></div>
+                  <div
+                    className="bg-green-500 h-3 rounded-full"
+                    style={{ width: "95%" }}
+                  ></div>
                 </div>
               </div>
 
@@ -400,7 +668,10 @@ const CoachDashboard = () => {
                   <span className="text-sm font-semibold">Excellent</span>
                 </div>
                 <div className="w-full bg-black/40 rounded-full h-3">
-                  <div className="bg-blue-500 h-3 rounded-full" style={{ width: '92%' }}></div>
+                  <div
+                    className="bg-blue-500 h-3 rounded-full"
+                    style={{ width: "92%" }}
+                  ></div>
                 </div>
               </div>
 

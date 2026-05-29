@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -20,21 +20,17 @@ import {
   Calendar,
   Filter
 } from 'lucide-react';
+import { Announcement, AnnouncementsAPI } from '@/app/lib/api';
 
-interface Announcement {
+type AnnouncementForm = {
   id: string;
   title: string;
   content: string;
   targetAudience: 'all' | 'customers' | 'coaches';
   priority: 'low' | 'medium' | 'high';
   status: 'draft' | 'published' | 'scheduled';
-  author: string;
-  createdDate: string;
-  publishedDate?: string;
-  scheduledDate?: string;
-  views: number;
-  imageUrl?: string;
-}
+  scheduledDate: string;
+};
 
 const AnnouncementsPage = () => {
   const router = useRouter();
@@ -44,8 +40,9 @@ const AnnouncementsPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [announcementToDelete, setAnnouncementToDelete] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AnnouncementForm>({
     id: '',
     title: '',
     content: '',
@@ -55,67 +52,20 @@ const AnnouncementsPage = () => {
     scheduledDate: ''
   });
 
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: '1',
-      title: 'New Year Promotion - 20% Off All Memberships',
-      content: 'Celebrate the New Year with us! Get 20% off all membership plans when you sign up before January 31st. This is the perfect time to commit to your fitness goals.',
-      targetAudience: 'customers',
-      priority: 'high',
-      status: 'published',
-      author: 'Admin Team',
-      createdDate: '2026-01-01',
-      publishedDate: '2026-01-01',
-      views: 456
-    },
-    {
-      id: '2',
-      title: 'New HIIT Classes Starting Next Week',
-      content: 'We are excited to announce new HIIT classes every Monday and Wednesday at 6:00 PM. Join our certified trainers for intense workouts designed to maximize calorie burn.',
-      targetAudience: 'customers',
-      priority: 'medium',
-      status: 'published',
-      author: 'Admin Team',
-      createdDate: '2026-01-10',
-      publishedDate: '2026-01-12',
-      views: 234
-    },
-    {
-      id: '3',
-      title: 'Coach Training Session - February Schedule',
-      content: 'All coaches are required to attend the monthly training session on February 15th at 10:00 AM. We will cover new safety protocols and equipment usage.',
-      targetAudience: 'coaches',
-      priority: 'high',
-      status: 'published',
-      author: 'Admin Team',
-      createdDate: '2026-01-15',
-      publishedDate: '2026-01-15',
-      views: 28
-    },
-    {
-      id: '4',
-      title: 'Facility Maintenance Notice',
-      content: 'Our facility will undergo maintenance on January 25th from 8:00 AM to 12:00 PM. All classes and sessions during this time will be rescheduled.',
-      targetAudience: 'all',
-      priority: 'high',
-      status: 'scheduled',
-      author: 'Admin Team',
-      createdDate: '2026-01-18',
-      scheduledDate: '2026-01-22',
-      views: 0
-    },
-    {
-      id: '5',
-      title: 'Nutrition Workshop Coming Soon',
-      content: 'Join our upcoming nutrition workshop where expert dietitians will share insights on meal planning and healthy eating habits.',
-      targetAudience: 'customers',
-      priority: 'low',
-      status: 'draft',
-      author: 'Admin Team',
-      createdDate: '2026-01-19',
-      views: 0
-    }
-  ]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        const data = await AnnouncementsAPI.getAll();
+        setAnnouncements(data);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAnnouncements();
+  }, []);
 
   const handleCreateNew = () => {
     setFormData({
@@ -144,60 +94,48 @@ const AnnouncementsPage = () => {
   };
 
   const handleSave = () => {
-    if (formData.id) {
-      // Update existing
-      setAnnouncements(announcements.map(a =>
-        a.id === formData.id
-          ? {
-              ...a,
-              title: formData.title,
-              content: formData.content,
-              targetAudience: formData.targetAudience,
-              priority: formData.priority,
-              status: formData.status,
-              scheduledDate: formData.scheduledDate || undefined
-            }
-          : a
-      ));
-      setSuccessMessage('Announcement updated successfully!');
-    } else {
-      // Create new
-      const newAnnouncement: Announcement = {
-        ...formData,
-        id: Date.now().toString(),
-        author: 'Admin Team',
-        createdDate: new Date().toISOString().split('T')[0],
-        publishedDate: formData.status === 'published' ? new Date().toISOString().split('T')[0] : undefined,
-        views: 0
+    const persistAnnouncement = async () => {
+      const payload = {
+        title: formData.title,
+        content: formData.content,
+        targetAudience: formData.targetAudience,
+        priority: formData.priority,
+        status: formData.status,
       };
-      setAnnouncements([newAnnouncement, ...announcements]);
-      setSuccessMessage('Announcement created successfully!');
-    }
-    setShowCreateModal(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+
+      if (formData.id) {
+        await AnnouncementsAPI.update(formData.id, payload);
+        setSuccessMessage('Announcement updated successfully!');
+      } else {
+        await AnnouncementsAPI.create(payload);
+        setSuccessMessage('Announcement created successfully!');
+      }
+
+      setAnnouncements(await AnnouncementsAPI.getAll());
+      setShowCreateModal(false);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    };
+
+    persistAnnouncement();
   };
 
   const handlePublish = (id: string) => {
-    setAnnouncements(announcements.map(a =>
-      a.id === id
-        ? { ...a, status: 'published', publishedDate: new Date().toISOString().split('T')[0] }
-        : a
-    ));
-    setSuccessMessage('Announcement published successfully!');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    AnnouncementsAPI.update(id, { status: 'published' }).then(async () => {
+      setAnnouncements(await AnnouncementsAPI.getAll());
+      setSuccessMessage('Announcement published successfully!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    });
   };
 
   const handleUnpublish = (id: string) => {
-    setAnnouncements(announcements.map(a =>
-      a.id === id
-        ? { ...a, status: 'draft', publishedDate: undefined }
-        : a
-    ));
-    setSuccessMessage('Announcement unpublished successfully!');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    AnnouncementsAPI.update(id, { status: 'draft' }).then(async () => {
+      setAnnouncements(await AnnouncementsAPI.getAll());
+      setSuccessMessage('Announcement unpublished successfully!');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -207,12 +145,14 @@ const AnnouncementsPage = () => {
 
   const confirmDelete = () => {
     if (announcementToDelete) {
-      setAnnouncements(announcements.filter(a => a.id !== announcementToDelete));
-      setShowDeleteModal(false);
-      setAnnouncementToDelete(null);
-      setSuccessMessage('Announcement deleted successfully!');
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      AnnouncementsAPI.delete(announcementToDelete).then(async () => {
+        setAnnouncements(await AnnouncementsAPI.getAll());
+        setShowDeleteModal(false);
+        setAnnouncementToDelete(null);
+        setSuccessMessage('Announcement deleted successfully!');
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      });
     }
   };
 
@@ -366,7 +306,11 @@ const AnnouncementsPage = () => {
 
         {/* Announcements List */}
         <div className="space-y-4">
-          {filteredAnnouncements.length === 0 ? (
+          {loading ? (
+            <div className="bg-brand-gray rounded-2xl p-12 border border-white/10 text-center text-gray-400">
+              Loading announcements...
+            </div>
+          ) : filteredAnnouncements.length === 0 ? (
             <div className="bg-brand-gray rounded-2xl p-12 border border-white/10 text-center">
               <Megaphone className="mx-auto mb-4 text-gray-600" size={64} />
               <h3 className="text-xl font-bold mb-2">No announcements found</h3>

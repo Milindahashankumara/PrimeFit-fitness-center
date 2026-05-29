@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { FeedbackAPI, BookingsAPI } from '@/app/lib/api';
-import { 
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { FeedbackAPI, BookingsAPI } from "@/app/lib/api";
+import {
   ArrowLeft,
   Star,
   Send,
@@ -13,8 +13,8 @@ import {
   MessageSquare,
   Award,
   Clock,
-  ThumbsUp
-} from 'lucide-react';
+  ThumbsUp,
+} from "lucide-react";
 
 /**
  * FEEDBACK WORKFLOW:
@@ -44,61 +44,67 @@ interface FeedbackSubmission {
   rating: number;
   feedback: string;
   submittedDate: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
 }
 
 const CustomerFeedbackPage = () => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'submit' | 'history'>('submit');
+  const [activeTab, setActiveTab] = useState<"submit" | "history">("submit");
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
-  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackSubmission[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<
+    CompletedSession[]
+  >([]);
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackSubmission[]>(
+    [],
+  );
 
   // Load completed sessions and feedback history
   useEffect(() => {
     const loadData = async () => {
-      const userData = localStorage.getItem('user');
+      const userData = localStorage.getItem("user");
       const user = userData ? JSON.parse(userData) : null;
-      
+
       if (!user) {
-        console.log('No user found');
+        console.log("No user found");
         setIsLoading(false);
         return;
       }
 
       try {
         setIsLoading(true);
-        
+
         // Load all bookings
         const bookings = await BookingsAPI.getAll();
-        console.log('Loaded bookings:', bookings);
-        
+        console.log("Loaded bookings:", bookings);
+
         // Load all feedback
         const feedbacks = await FeedbackAPI.getByCustomer();
-        console.log('Loaded feedback:', feedbacks);
-        
+        console.log("Loaded feedback:", feedbacks);
+
         // Filter for completed sessions (completed status only)
         const completed = bookings
-          .filter((b: any) => b.status === 'completed')
+          .filter((b: any) => b.status === "completed")
           .map((booking: any) => ({
             id: booking._id || booking.id,
             coachName: booking.coachName,
             sessionType: booking.sessionType,
             date: booking.date,
             duration: booking.duration || 60,
-            hasFeedback: feedbacks.some((f: any) => f.sessionId === (booking._id || booking.id))
+            hasFeedback: feedbacks.some(
+              (f: any) => f.sessionId === (booking._id || booking.id),
+            ),
           }));
-        
+
         setCompletedSessions(completed);
-        
+
         // Transform feedback to match interface
         const history = feedbacks.map((f: any) => ({
           id: f._id || f.id,
@@ -106,13 +112,15 @@ const CustomerFeedbackPage = () => {
           coachName: f.coachName,
           rating: f.rating,
           feedback: f.feedback,
-          submittedDate: f.submittedDate ? new Date(f.submittedDate).toISOString().split('T')[0] : '',
-          status: f.status
+          submittedDate: f.submittedDate
+            ? new Date(f.submittedDate).toISOString().split("T")[0]
+            : "",
+          status: f.status,
         }));
-        
+
         setFeedbackHistory(history);
       } catch (error) {
-        console.error('Failed to load data:', error);
+        console.error("Failed to load data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -126,22 +134,24 @@ const CustomerFeedbackPage = () => {
       return;
     }
 
-    const session = completedSessions.find(s => s.id === selectedSession);
+    const session = completedSessions.find((s) => s.id === selectedSession);
     if (!session) return;
 
     // Get user data for coach info
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem("user");
     const user = userData ? JSON.parse(userData) : null;
 
     try {
       setIsSubmitting(true);
-      
+
       // Find the booking to get coach ID
       const bookings = await BookingsAPI.getAll();
-      const booking = bookings.find((b: any) => (b._id || b.id) === selectedSession);
-      
+      const booking = bookings.find(
+        (b: any) => (b._id || b.id) === selectedSession,
+      );
+
       if (!booking) {
-        throw new Error('Booking not found');
+        throw new Error("Booking not found");
       }
 
       // Submit feedback via API
@@ -151,10 +161,10 @@ const CustomerFeedbackPage = () => {
         coachName: session.coachName,
         rating,
         feedback: feedback.trim(),
-        status: 'pending'
+        status: "pending",
       });
 
-      console.log('Feedback submitted:', newFeedback);
+      console.log("Feedback submitted:", newFeedback);
 
       // Add to local state
       const feedbackItem: FeedbackSubmission = {
@@ -163,27 +173,31 @@ const CustomerFeedbackPage = () => {
         coachName: session.coachName,
         rating,
         feedback: feedback.trim(),
-        submittedDate: new Date().toISOString().split('T')[0],
-        status: 'pending'
+        submittedDate: new Date().toISOString().split("T")[0],
+        status: "pending",
       };
-      
+
       setFeedbackHistory([feedbackItem, ...feedbackHistory]);
 
       // Update session to mark as having feedback
-      setCompletedSessions(completedSessions.map(s =>
-        s.id === selectedSession ? { ...s, hasFeedback: true } : s
-      ));
+      setCompletedSessions(
+        completedSessions.map((s) =>
+          s.id === selectedSession ? { ...s, hasFeedback: true } : s,
+        ),
+      );
 
       // Reset form
       setSelectedSession(null);
       setRating(0);
-      setFeedback('');
-      setSuccessMessage('Thank you for your feedback! It will be reviewed by our team.');
+      setFeedback("");
+      setSuccessMessage(
+        "Thank you for your feedback! It will be reviewed by our team.",
+      );
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
     } catch (error: any) {
-      console.error('Failed to submit feedback:', error);
-      setSuccessMessage('Failed to submit feedback. Please try again.');
+      console.error("Failed to submit feedback:", error);
+      setSuccessMessage("Failed to submit feedback. Please try again.");
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
     } finally {
@@ -191,24 +205,34 @@ const CustomerFeedbackPage = () => {
     }
   };
 
-  const availableSessions = completedSessions.filter(s => !s.hasFeedback);
-  const selectedSessionData = completedSessions.find(s => s.id === selectedSession);
+  const availableSessions = completedSessions.filter((s) => !s.hasFeedback);
+  const selectedSessionData = completedSessions.find(
+    (s) => s.id === selectedSession,
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'text-green-400 bg-green-500/20';
-      case 'pending': return 'text-yellow-400 bg-yellow-500/20';
-      case 'rejected': return 'text-red-400 bg-red-500/20';
-      default: return 'text-gray-400 bg-gray-500/20';
+      case "approved":
+        return "text-green-400 bg-green-500/20";
+      case "pending":
+        return "text-yellow-400 bg-yellow-500/20";
+      case "rejected":
+        return "text-red-400 bg-red-500/20";
+      default:
+        return "text-gray-400 bg-gray-500/20";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <CheckCircle className="text-green-400" size={16} />;
-      case 'pending': return <Clock className="text-yellow-400" size={16} />;
-      case 'rejected': return <MessageSquare className="text-red-400" size={16} />;
-      default: return null;
+      case "approved":
+        return <CheckCircle className="text-green-400" size={16} />;
+      case "pending":
+        return <Clock className="text-yellow-400" size={16} />;
+      case "rejected":
+        return <MessageSquare className="text-red-400" size={16} />;
+      default:
+        return null;
     }
   };
 
@@ -218,12 +242,17 @@ const CustomerFeedbackPage = () => {
       <header className="bg-brand-gray border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="hover:text-brand-red transition-colors">
+            <button
+              onClick={() => router.back()}
+              className="hover:text-brand-red transition-colors"
+            >
               <ArrowLeft size={24} />
             </button>
             <div>
               <h1 className="text-2xl font-bold">Session Feedback</h1>
-              <p className="text-sm text-gray-400">Share your experience with our coaches</p>
+              <p className="text-sm text-gray-400">
+                Share your experience with our coaches
+              </p>
             </div>
           </div>
         </div>
@@ -241,11 +270,11 @@ const CustomerFeedbackPage = () => {
         {/* Tabs */}
         <div className="flex gap-2 mb-8 bg-brand-gray p-2 rounded-xl border border-white/10">
           <button
-            onClick={() => setActiveTab('submit')}
+            onClick={() => setActiveTab("submit")}
             className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
-              activeTab === 'submit'
-                ? 'bg-brand-red text-white'
-                : 'text-gray-400 hover:text-white'
+              activeTab === "submit"
+                ? "bg-brand-red text-white"
+                : "text-gray-400 hover:text-white"
             }`}
           >
             <Send size={18} />
@@ -257,11 +286,11 @@ const CustomerFeedbackPage = () => {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => setActiveTab("history")}
             className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
-              activeTab === 'history'
-                ? 'bg-brand-red text-white'
-                : 'text-gray-400 hover:text-white'
+              activeTab === "history"
+                ? "bg-brand-red text-white"
+                : "text-gray-400 hover:text-white"
             }`}
           >
             <MessageSquare size={18} />
@@ -275,16 +304,20 @@ const CustomerFeedbackPage = () => {
         </div>
 
         {/* Submit Feedback Tab */}
-        {activeTab === 'submit' && (
+        {activeTab === "submit" && (
           <div className="space-y-6">
             {/* Info Card */}
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <Award className="text-blue-400 shrink-0 mt-1" size={24} />
                 <div>
-                  <h3 className="font-semibold text-blue-400 mb-1">Help Us Improve!</h3>
+                  <h3 className="font-semibold text-blue-400 mb-1">
+                    Help Us Improve!
+                  </h3>
                   <p className="text-sm text-gray-300">
-                    Your feedback helps us maintain high-quality coaching standards and helps other customers make informed decisions. All feedback is reviewed before being published.
+                    Your feedback helps us maintain high-quality coaching
+                    standards and helps other customers make informed decisions.
+                    All feedback is reviewed before being published.
                   </p>
                 </div>
               </div>
@@ -299,10 +332,16 @@ const CustomerFeedbackPage = () => {
 
               {availableSessions.length === 0 ? (
                 <div className="text-center py-12">
-                  <MessageSquare className="mx-auto mb-4 text-gray-600" size={64} />
-                  <h3 className="text-xl font-bold mb-2">No Sessions Available</h3>
+                  <MessageSquare
+                    className="mx-auto mb-4 text-gray-600"
+                    size={64}
+                  />
+                  <h3 className="text-xl font-bold mb-2">
+                    No Sessions Available
+                  </h3>
                   <p className="text-gray-400">
-                    You've already provided feedback for all completed sessions. Book more sessions to share additional feedback!
+                    You've already provided feedback for all completed sessions.
+                    Book more sessions to share additional feedback!
                   </p>
                 </div>
               ) : (
@@ -313,24 +352,34 @@ const CustomerFeedbackPage = () => {
                       onClick={() => setSelectedSession(session.id)}
                       className={`w-full p-4 rounded-lg border transition-all ${
                         selectedSession === session.id
-                          ? 'border-brand-red bg-brand-red/10'
-                          : 'border-white/10 bg-black/40 hover:border-white/20'
+                          ? "border-brand-red bg-brand-red/10"
+                          : "border-white/10 bg-black/40 hover:border-white/20"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 text-left">
                           <div className="w-12 h-12 bg-brand-red rounded-full flex items-center justify-center font-bold">
-                            {session.coachName.split(' ').map(n => n[0]).join('')}
+                            {session.coachName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
                           </div>
                           <div>
                             <h3 className="font-bold">{session.coachName}</h3>
-                            <p className="text-sm text-gray-400">{session.sessionType}</p>
+                            <p className="text-sm text-gray-400">
+                              {session.sessionType}
+                            </p>
                             <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                              <span>{new Date(session.date).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}</span>
+                              <span>
+                                {new Date(session.date).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  },
+                                )}
+                              </span>
                               <span>•</span>
                               <span>{session.duration} min</span>
                             </div>
@@ -370,19 +419,19 @@ const CustomerFeedbackPage = () => {
                           size={40}
                           className={`${
                             star <= (hoverRating || rating)
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-600'
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-600"
                           } transition-colors`}
                         />
                       </button>
                     ))}
                     {rating > 0 && (
                       <span className="ml-4 text-lg font-semibold">
-                        {rating === 5 && '🎉 Excellent!'}
-                        {rating === 4 && '😊 Great!'}
-                        {rating === 3 && '👍 Good'}
-                        {rating === 2 && '😐 Fair'}
-                        {rating === 1 && '☹️ Poor'}
+                        {rating === 5 && "Excellent!"}
+                        {rating === 4 && "Great!"}
+                        {rating === 3 && "Good"}
+                        {rating === 2 && "Fair"}
+                        {rating === 1 && "Poor"}
                       </span>
                     )}
                   </div>
@@ -402,7 +451,9 @@ const CustomerFeedbackPage = () => {
                     className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none resize-none"
                   />
                   <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-                    <span>Your feedback will be reviewed before being published</span>
+                    <span>
+                      Your feedback will be reviewed before being published
+                    </span>
                     <span>{feedback.length}/500</span>
                   </div>
                 </div>
@@ -431,17 +482,21 @@ const CustomerFeedbackPage = () => {
         )}
 
         {/* Feedback History Tab */}
-        {activeTab === 'history' && (
+        {activeTab === "history" && (
           <div className="space-y-4">
             {feedbackHistory.length === 0 ? (
               <div className="bg-brand-gray rounded-2xl p-12 border border-white/10 text-center">
-                <MessageSquare className="mx-auto mb-4 text-gray-600" size={64} />
+                <MessageSquare
+                  className="mx-auto mb-4 text-gray-600"
+                  size={64}
+                />
                 <h3 className="text-xl font-bold mb-2">No Feedback Yet</h3>
                 <p className="text-gray-400 mb-6">
-                  You haven't submitted any feedback yet. Complete a session and share your experience!
+                  You haven't submitted any feedback yet. Complete a session and
+                  share your experience!
                 </p>
                 <button
-                  onClick={() => setActiveTab('submit')}
+                  onClick={() => setActiveTab("submit")}
                   className="bg-brand-red hover:bg-red-600 px-6 py-3 rounded-lg font-semibold transition-colors inline-flex items-center gap-2"
                 >
                   <Send size={18} />
@@ -450,26 +505,40 @@ const CustomerFeedbackPage = () => {
               </div>
             ) : (
               feedbackHistory.map((item) => (
-                <div key={item.id} className="bg-brand-gray rounded-2xl p-6 border border-white/10">
+                <div
+                  key={item.id}
+                  className="bg-brand-gray rounded-2xl p-6 border border-white/10"
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-brand-red rounded-full flex items-center justify-center font-bold">
-                        {item.coachName.split(' ').map(n => n[0]).join('')}
+                        {item.coachName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
                       </div>
                       <div>
                         <h3 className="font-bold">{item.coachName}</h3>
                         <p className="text-sm text-gray-400">
-                          Submitted {new Date(item.submittedDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
+                          Submitted{" "}
+                          {new Date(item.submittedDate).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
                         </p>
                       </div>
                     </div>
-                    <div className={`px-3 py-1 rounded-lg flex items-center gap-2 ${getStatusColor(item.status)}`}>
+                    <div
+                      className={`px-3 py-1 rounded-lg flex items-center gap-2 ${getStatusColor(item.status)}`}
+                    >
                       {getStatusIcon(item.status)}
-                      <span className="text-xs font-semibold capitalize">{item.status}</span>
+                      <span className="text-xs font-semibold capitalize">
+                        {item.status}
+                      </span>
                     </div>
                   </div>
 
@@ -478,29 +547,37 @@ const CustomerFeedbackPage = () => {
                       <Star
                         key={star}
                         size={20}
-                        className={star <= item.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}
+                        className={
+                          star <= item.rating
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-600"
+                        }
                       />
                     ))}
-                    <span className="ml-2 text-sm font-semibold">{item.rating}/5</span>
+                    <span className="ml-2 text-sm font-semibold">
+                      {item.rating}/5
+                    </span>
                   </div>
 
                   <div className="bg-black/40 p-4 rounded-lg">
                     <p className="text-gray-300">{item.feedback}</p>
                   </div>
 
-                  {item.status === 'pending' && (
+                  {item.status === "pending" && (
                     <div className="mt-4 bg-yellow-500/10 border border-yellow-500/30 p-3 rounded-lg">
                       <p className="text-sm text-yellow-400">
-                        ⏳ Your feedback is under review and will be published soon.
+                        ⏳ Your feedback is under review and will be published
+                        soon.
                       </p>
                     </div>
                   )}
 
-                  {item.status === 'approved' && (
+                  {item.status === "approved" && (
                     <div className="mt-4 bg-green-500/10 border border-green-500/30 p-3 rounded-lg">
                       <p className="text-sm text-green-400 flex items-center gap-2">
                         <ThumbsUp size={16} />
-                        Your feedback has been approved and is now visible on our website!
+                        Your feedback has been approved and is now visible on
+                        our website!
                       </p>
                     </div>
                   )}

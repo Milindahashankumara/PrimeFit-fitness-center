@@ -1,4 +1,4 @@
-const Complaint = require('../models/Complaint');
+const Complaint = require("../models/Complaint");
 
 // @desc    Get all complaints
 // @route   GET /api/complaints
@@ -18,7 +18,7 @@ exports.getComplaints = async (req, res) => {
     }
 
     // If user is customer, only show their complaints
-    if (req.user.role === 'customer') {
+    if (req.user.role === "customer") {
       query.customerEmail = req.user.email;
     }
 
@@ -27,12 +27,12 @@ exports.getComplaints = async (req, res) => {
     res.status(200).json({
       success: true,
       count: complaints.length,
-      data: complaints
+      data: complaints,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -47,26 +47,29 @@ exports.getComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: 'Complaint not found'
+        message: "Complaint not found",
       });
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && complaint.customerEmail !== req.user.email) {
+    if (
+      req.user.role !== "admin" &&
+      complaint.customerEmail !== req.user.email
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this complaint'
+        message: "Not authorized to access this complaint",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: complaint
+      data: complaint,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -76,9 +79,9 @@ exports.getComplaint = async (req, res) => {
 // @access  Private (Customer)
 exports.createComplaint = async (req, res) => {
   try {
-    console.log('📝 Creating new complaint...');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User:', req.user);
+    console.log("Creating new complaint...");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    console.log("User:", req.user);
 
     const { subject, category, description, priority } = req.body;
 
@@ -86,31 +89,34 @@ exports.createComplaint = async (req, res) => {
       subject,
       category,
       description,
-      priority: priority || 'medium',
+      priority: priority || "medium",
       customerName: req.user.name,
       customerEmail: req.user.email,
       customerId: req.user.id,
-      status: 'pending'
+      status: "pending",
     };
 
-    console.log('💾 Saving complaint to MongoDB:', JSON.stringify(complaintData, null, 2));
+    console.log(
+      "Saving complaint to MongoDB:",
+      JSON.stringify(complaintData, null, 2),
+    );
 
     const complaint = await Complaint.create(complaintData);
 
-    console.log('✅ Complaint saved to MongoDB successfully!');
-    console.log('Complaint ID:', complaint._id);
-    console.log('Saved complaint:', JSON.stringify(complaint, null, 2));
+    console.log("Complaint saved to MongoDB successfully!");
+    console.log("Complaint ID:", complaint._id);
+    console.log("Saved complaint:", JSON.stringify(complaint, null, 2));
 
     res.status(201).json({
       success: true,
-      data: complaint
+      data: complaint,
     });
   } catch (error) {
-    console.error('❌ Error creating complaint:', error.message);
-    console.error('Stack:', error.stack);
+    console.error("Error creating complaint:", error.message);
+    console.error("Stack:", error.stack);
     res.status(400).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -125,7 +131,7 @@ exports.updateComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: 'Complaint not found'
+        message: "Complaint not found",
       });
     }
 
@@ -139,7 +145,7 @@ exports.updateComplaint = async (req, res) => {
     }
     if (priority) complaint.priority = priority;
 
-    if (status === 'resolved') {
+    if (status === "resolved") {
       complaint.resolvedBy = req.user.name;
       complaint.responseDate = new Date();
     }
@@ -148,12 +154,12 @@ exports.updateComplaint = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: complaint
+      data: complaint,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -168,15 +174,18 @@ exports.deleteComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: 'Complaint not found'
+        message: "Complaint not found",
       });
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && complaint.customerEmail !== req.user.email) {
+    if (
+      req.user.role !== "admin" &&
+      complaint.customerEmail !== req.user.email
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete this complaint'
+        message: "Not authorized to delete this complaint",
       });
     }
 
@@ -184,12 +193,12 @@ exports.deleteComplaint = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Complaint deleted successfully'
+      message: "Complaint deleted successfully",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
