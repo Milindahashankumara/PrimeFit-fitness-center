@@ -82,13 +82,13 @@ const AnnouncementsPage = () => {
 
   const handleEdit = (announcement: Announcement) => {
     setFormData({
-      id: announcement.id,
+      id: announcement.id || announcement._id || '',
       title: announcement.title,
       content: announcement.content,
       targetAudience: announcement.targetAudience,
       priority: announcement.priority,
-      status: announcement.status,
-      scheduledDate: announcement.scheduledDate || ''
+      status: announcement.status === 'archived' ? 'draft' : announcement.status,
+      scheduledDate: announcement.scheduledDate || announcement.publishDate || ''
     });
     setShowCreateModal(true);
   };
@@ -166,7 +166,7 @@ const AnnouncementsPage = () => {
   const getPublishedCount = () => announcements.filter(a => a.status === 'published').length;
   const getDraftCount = () => announcements.filter(a => a.status === 'draft').length;
   const getScheduledCount = () => announcements.filter(a => a.status === 'scheduled').length;
-  const getTotalViews = () => announcements.reduce((sum, a) => sum + a.views, 0);
+  const getTotalViews = () => announcements.reduce((sum, a) => sum + (a.views ?? 0), 0);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -330,8 +330,11 @@ const AnnouncementsPage = () => {
               )}
             </div>
           ) : (
-            filteredAnnouncements.map((announcement) => (
-              <div key={announcement.id} className="bg-brand-gray rounded-2xl p-6 border border-white/10">
+            filteredAnnouncements.map((announcement) => {
+              const announcementId = announcement.id || announcement._id || '';
+
+              return (
+              <div key={announcementId || announcement.title} className="bg-brand-gray rounded-2xl p-6 border border-white/10">
                 <div className="flex flex-col lg:flex-row justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
@@ -367,13 +370,15 @@ const AnnouncementsPage = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-                      <span>Created: {new Date(announcement.createdDate).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}</span>
-                      {announcement.publishedDate && (
-                        <span>Published: {new Date(announcement.publishedDate).toLocaleDateString('en-US', {
+                      <span>
+                        Created: {announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : 'N/A'}
+                      </span>
+                      {announcement.publishDate && (
+                        <span>Published: {new Date(announcement.publishDate).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
@@ -389,7 +394,9 @@ const AnnouncementsPage = () => {
                           })}
                         </span>
                       )}
-                      <span>By {announcement.author}</span>
+                      <span>
+                        By {announcement.createdByName || (typeof announcement.createdBy === 'string' ? announcement.createdBy : announcement.createdBy?.name) || 'Admin'}
+                      </span>
                     </div>
                   </div>
 
@@ -404,7 +411,7 @@ const AnnouncementsPage = () => {
                     </button>
                     {announcement.status === 'draft' || announcement.status === 'scheduled' ? (
                       <button
-                        onClick={() => handlePublish(announcement.id)}
+                        onClick={() => handlePublish(announcementId)}
                         className="flex-1 lg:flex-none bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                       >
                         <Send size={18} />
@@ -412,7 +419,7 @@ const AnnouncementsPage = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleUnpublish(announcement.id)}
+                        onClick={() => handleUnpublish(announcementId)}
                         className="flex-1 lg:flex-none bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                       >
                         <EyeOff size={18} />
@@ -420,7 +427,7 @@ const AnnouncementsPage = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => handleDelete(announcement.id)}
+                      onClick={() => handleDelete(announcementId)}
                       className="flex-1 lg:flex-none bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       <Trash2 size={18} />
@@ -429,7 +436,8 @@ const AnnouncementsPage = () => {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
