@@ -1,14 +1,14 @@
-import React from 'react';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import Services from './components/Services';
-import Coaches from './components/Coaches';
-import Tools from './components/Tools';
-import BlogSection from './components/BlogSection';
-import Plans from './components/Plans';
-import Testimonials from './components/Testimonials';
-import FAQ from './components/FAQ';
-import Footer from './components/Footer';
+import React from "react";
+import Navbar from "./components/Navbar";
+import Hero from "./components/Hero";
+import Services from "./components/Services";
+import Coaches from "./components/Coaches";
+// Tools component removed from home page
+import BlogSection from "./components/BlogSection";
+import Plans from "./components/Plans";
+import Testimonials from "./components/Testimonials";
+import FAQ from "./components/FAQ";
+import Footer from "./components/Footer";
 
 export default function HomePage() {
   return (
@@ -17,7 +17,6 @@ export default function HomePage() {
       <Hero />
       <Services />
       <Coaches />
-      <Tools />
       <BlogSection />
       <Plans />
       <Testimonials />
@@ -26,4 +25,3 @@ export default function HomePage() {
     </div>
   );
 }
-

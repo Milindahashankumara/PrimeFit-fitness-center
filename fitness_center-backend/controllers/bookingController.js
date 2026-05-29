@@ -1,5 +1,5 @@
-const Booking = require('../models/Booking');
-const User = require('../models/User');
+const Booking = require("../models/Booking");
+const User = require("../models/User");
 
 // @desc    Get all bookings (with filters)
 // @route   GET /api/bookings
@@ -30,33 +30,33 @@ exports.getBookings = async (req, res) => {
 
     // If user is customer, only show their bookings
     // Support both old format (email) and new format (ObjectId)
-    if (req.user.role === 'customer') {
+    if (req.user.role === "customer") {
       query.$or = [
-        { customerId: req.user.id },           // New format: ObjectId
-        { customerEmail: req.user.email }      // Old format: email in customerId field
+        { customerId: req.user.id }, // New format: ObjectId
+        { customerEmail: req.user.email }, // Old format: email in customerId field
       ];
       delete query.customerId; // Remove the direct customerId filter
     }
 
     // If user is coach, only show their bookings
-    if (req.user.role === 'coach') {
+    if (req.user.role === "coach") {
       query.coachId = req.user.id;
     }
 
     const bookings = await Booking.find(query)
-      .populate('customerId', 'name email')
-      .populate('coachId', 'name email specializations')
+      .populate("customerId", "name email")
+      .populate("coachId", "name email specializations")
       .sort({ requestedAt: -1 });
 
     res.status(200).json({
       success: true,
       count: bookings.length,
-      data: bookings
+      data: bookings,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -67,34 +67,36 @@ exports.getBookings = async (req, res) => {
 exports.getBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('customerId', 'name email phone')
-      .populate('coachId', 'name email specializations hourlyRate');
+      .populate("customerId", "name email phone")
+      .populate("coachId", "name email specializations hourlyRate");
 
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && 
-        booking.customerId._id.toString() !== req.user.id && 
-        booking.coachId._id.toString() !== req.user.id) {
+    if (
+      req.user.role !== "admin" &&
+      booking.customerId._id.toString() !== req.user.id &&
+      booking.coachId._id.toString() !== req.user.id
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this booking'
+        message: "Not authorized to access this booking",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: booking
+      data: booking,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -104,11 +106,25 @@ exports.getBooking = async (req, res) => {
 // @access  Private (Customer)
 exports.createBooking = async (req, res) => {
   try {
-    console.log('📝 Creating new booking...');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User:', req.user);
+    console.log("Creating new booking...");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    console.log("User:", req.user);
 
-    const { coachId, coachName, date, time, sessionType, type, duration, price, message, location, customerId, customerName, customerEmail } = req.body;
+    const {
+      coachId,
+      coachName,
+      date,
+      time,
+      sessionType,
+      type,
+      duration,
+      price,
+      message,
+      location,
+      customerId,
+      customerName,
+      customerEmail,
+    } = req.body;
 
     // Create booking data
     const bookingData = {
@@ -125,27 +141,30 @@ exports.createBooking = async (req, res) => {
       price,
       message,
       location,
-      status: 'pending'
+      status: "pending",
     };
 
-    console.log('💾 Saving booking to MongoDB:', JSON.stringify(bookingData, null, 2));
-    
+    console.log(
+      "Saving booking to MongoDB:",
+      JSON.stringify(bookingData, null, 2),
+    );
+
     const booking = await Booking.create(bookingData);
-    
-    console.log('✅ Booking saved to MongoDB successfully!');
-    console.log('Booking ID:', booking._id);
-    console.log('Saved booking:', JSON.stringify(booking, null, 2));
+
+    console.log("Booking saved to MongoDB successfully!");
+    console.log("Booking ID:", booking._id);
+    console.log("Saved booking:", JSON.stringify(booking, null, 2));
 
     res.status(201).json({
       success: true,
-      data: booking
+      data: booking,
     });
   } catch (error) {
-    console.error('❌ Error creating booking:', error.message);
-    console.error('Stack:', error.stack);
+    console.error("Error creating booking:", error.message);
+    console.error("Stack:", error.stack);
     res.status(400).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -160,7 +179,7 @@ exports.updateBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
@@ -168,29 +187,29 @@ exports.updateBooking = async (req, res) => {
     let updateData = {};
 
     // Check authorization - coach can update status, customer can cancel
-    if (req.user.role === 'coach') {
+    if (req.user.role === "coach") {
       if (booking.coachId.toString() !== req.user.id) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update this booking'
+          message: "Not authorized to update this booking",
         });
       }
       // Coach can update status
       if (req.body.status) {
         updateData.status = req.body.status;
       }
-    } else if (req.user.role === 'customer') {
+    } else if (req.user.role === "customer") {
       if (booking.customerId.toString() !== req.user.id) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update this booking'
+          message: "Not authorized to update this booking",
         });
       }
       // Customer can only cancel
-      if (req.body.status === 'cancelled') {
-        updateData.status = 'cancelled';
+      if (req.body.status === "cancelled") {
+        updateData.status = "cancelled";
       }
-    } else if (req.user.role === 'admin') {
+    } else if (req.user.role === "admin") {
       // Admin can update anything
       updateData = req.body;
     }
@@ -199,20 +218,20 @@ exports.updateBooking = async (req, res) => {
     const updatedBooking = await Booking.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
-      { 
-        new: true, 
-        runValidators: false // Skip validation for partial updates
-      }
+      {
+        new: true,
+        runValidators: false, // Skip validation for partial updates
+      },
     );
 
     res.status(200).json({
       success: true,
-      data: updatedBooking
+      data: updatedBooking,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -227,16 +246,18 @@ exports.deleteBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && 
-        booking.customerId.toString() !== req.user.id) {
+    if (
+      req.user.role !== "admin" &&
+      booking.customerId.toString() !== req.user.id
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete this booking'
+        message: "Not authorized to delete this booking",
       });
     }
 
@@ -244,12 +265,12 @@ exports.deleteBooking = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Booking deleted successfully'
+      message: "Booking deleted successfully",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };

@@ -1,40 +1,41 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React, { useState } from "react";
+import { Mail, Lock, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const LoginPage = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    role: 'customer' // customer, coach, admin
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       // Call real backend API
-      console.log('🔐 Logging in:', formData.email);
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
+      console.log("Logging in:", formData.email);
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: formData.email,
@@ -45,32 +46,32 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data.message || "Login failed");
       }
 
-      console.log('✅ Login successful!', data);
+      console.log("Login successful!", data);
 
       // Store token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
       // Redirect based on role
       switch (data.user.role) {
-        case 'customer':
-          router.push('/dashboard/customer');
+        case "customer":
+          router.push("/dashboard/customer");
           break;
-        case 'coach':
-          router.push('/dashboard/coach');
+        case "coach":
+          router.push("/dashboard/coach");
           break;
-        case 'admin':
-          router.push('/dashboard/admin');
+        case "admin":
+          router.push("/dashboard/admin");
           break;
         default:
-          router.push('/');
+          router.push("/");
       }
     } catch (err: any) {
-      console.error('❌ Login error:', err);
-      setError(err.message || 'Login failed. Please try again.');
+      console.error("Login error:", err);
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -82,28 +83,40 @@ const LoginPage = () => {
       <div className="absolute top-0 right-0 w-1/2 h-full bg-brand-red/5 blur-3xl rounded-l-full pointer-events-none"></div>
 
       <div className="max-w-7xl w-full mx-auto px-4 grid md:grid-cols-2 gap-12 items-center relative z-10 py-12">
-        
         {/* Left Side: Info */}
         <div className="space-y-8">
           <h1 className="text-5xl font-bold">
             Welcome <span className="text-brand-red">Back!</span>
           </h1>
           <p className="text-gray-400 text-lg">
-            Login to access your personalized dashboard and continue your fitness journey.
+            Login to access your personalized dashboard and continue your
+            fitness journey.
           </p>
 
           <div className="grid gap-6">
             <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-brand-red">
-              <h3 className="font-bold text-xl mb-2 text-brand-red">Track Your Progress</h3>
-              <p className="text-sm text-gray-400">Monitor your workouts, nutrition, and achievements.</p>
+              <h3 className="font-bold text-xl mb-2 text-brand-red">
+                Track Your Progress
+              </h3>
+              <p className="text-sm text-gray-400">
+                Monitor your workouts, nutrition, and achievements.
+              </p>
             </div>
             <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-brand-red">
-              <h3 className="font-bold text-xl mb-2 text-brand-red">Connect with Coaches</h3>
-              <p className="text-sm text-gray-400">Get personalized guidance from expert trainers.</p>
+              <h3 className="font-bold text-xl mb-2 text-brand-red">
+                Connect with Coaches
+              </h3>
+              <p className="text-sm text-gray-400">
+                Get personalized guidance from expert trainers.
+              </p>
             </div>
             <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-brand-red">
-              <h3 className="font-bold text-xl mb-2 text-brand-red">Join the Community</h3>
-              <p className="text-sm text-gray-400">Share your journey and inspire others.</p>
+              <h3 className="font-bold text-xl mb-2 text-brand-red">
+                Join the Community
+              </h3>
+              <p className="text-sm text-gray-400">
+                Share your journey and inspire others.
+              </p>
             </div>
           </div>
         </div>
@@ -115,7 +128,10 @@ const LoginPage = () => {
 
           {error && (
             <div className="mb-6 bg-red-500/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+              <AlertCircle
+                className="text-red-500 flex-shrink-0 mt-0.5"
+                size={20}
+              />
               <p className="text-sm text-red-200">{error}</p>
             </div>
           )}
@@ -124,7 +140,10 @@ const LoginPage = () => {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Mail
+                  className="absolute left-3 top-3 text-gray-400"
+                  size={20}
+                />
                 <input
                   type="email"
                   name="email"
@@ -140,7 +159,10 @@ const LoginPage = () => {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Lock
+                  className="absolute left-3 top-3 text-gray-400"
+                  size={20}
+                />
                 <input
                   type="password"
                   name="password"
@@ -153,26 +175,18 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Login As</label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full bg-black/40 border border-white/20 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-brand-red transition-colors"
-              >
-                <option value="customer">Customer</option>
-                <option value="coach">Coach</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/20" />
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-white/20"
+                />
                 <span className="text-sm text-white/70">Remember me</span>
               </label>
-              <Link href="/auth/forgot-password" className="text-sm text-brand-red hover:underline">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-brand-red hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -182,12 +196,14 @@ const LoginPage = () => {
               disabled={loading}
               className="w-full bg-white text-brand-red hover:bg-gray-100 py-3 rounded-lg font-bold text-lg transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? "Logging in..." : "Login"}
             </button>
 
             <div className="relative flex py-2 items-center">
               <div className="flex-grow border-t border-white/20"></div>
-              <span className="flex-shrink-0 mx-4 text-gray-300 text-sm">Or</span>
+              <span className="flex-shrink-0 mx-4 text-gray-300 text-sm">
+                Or
+              </span>
               <div className="flex-grow border-t border-white/20"></div>
             </div>
 
@@ -196,17 +212,32 @@ const LoginPage = () => {
               className="w-full border border-white/30 hover:bg-white/10 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"/>
-                <path fill="#34A853" d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"/>
-                <path fill="#4A90E2" d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"/>
-                <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"/>
+                <path
+                  fill="#EA4335"
+                  d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"
+                />
+                <path
+                  fill="#4A90E2"
+                  d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"
+                />
               </svg>
               Login with Google
             </button>
 
             <p className="text-center text-white/70 text-sm mt-6">
-              Don&apos;t have an account?{' '}
-              <Link href="/auth/register" className="text-white font-semibold hover:underline">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/register"
+                className="text-white font-semibold hover:underline"
+              >
                 Sign up
               </Link>
             </p>
