@@ -114,7 +114,9 @@ export interface Announcement {
   status: "draft" | "published" | "archived" | "scheduled";
   targetAudience: "all" | "customers" | "coaches";
   publishDate?: string;
+  scheduledDate?: string;
   expiryDate?: string;
+  views?: number;
   createdBy?: string | { name?: string; email?: string };
   createdByName?: string;
   createdAt?: string;
