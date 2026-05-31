@@ -417,8 +417,11 @@ const CoachProfilePage = () => {
                     <label className="block text-sm text-gray-400 mb-2">Years of Experience</label>
                     <input
                       type="number"
-                      value={isEditing ? editedProfile.experience : profile.experience}
-                      onChange={(e) => handleInputChange('experience', parseInt(e.target.value))}
+                      value={isEditing ? (editedProfile.experience ?? '') : (profile.experience ?? '')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        handleInputChange('experience', v === '' ? '' : parseInt(v, 10));
+                      }}
                       disabled={!isEditing}
                       min="0"
                       className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none"
@@ -431,8 +434,11 @@ const CoachProfilePage = () => {
                       <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input
                         type="number"
-                        value={isEditing ? editedProfile.hourlyRate : profile.hourlyRate}
-                        onChange={(e) => handleInputChange('hourlyRate', parseInt(e.target.value))}
+                        value={isEditing ? (editedProfile.hourlyRate ?? '') : (profile.hourlyRate ?? '')}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          handleInputChange('hourlyRate', v === '' ? '' : parseInt(v, 10));
+                        }}
                         disabled={!isEditing}
                         min="0"
                         className="w-full bg-black/40 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none"
