@@ -22,7 +22,12 @@ import {
   Megaphone,
 } from "lucide-react";
 import Link from "next/link";
-import { Announcement, AnnouncementsAPI, ResourceItem, ResourcesAPI } from "@/app/lib/api";
+import {
+  Announcement,
+  AnnouncementsAPI,
+  ResourceItem,
+  ResourcesAPI,
+} from "@/app/lib/api";
 
 interface UserData {
   name: string;
@@ -126,8 +131,8 @@ const CustomerDashboardContent = () => {
     const loadAnnouncements = async () => {
       try {
         const data = await AnnouncementsAPI.getAll({
-          targetAudience: 'customers',
-          status: 'published',
+          targetAudience: "customers",
+          status: "published",
         });
         if (!isMounted) return;
 
@@ -225,9 +230,16 @@ const CustomerDashboardContent = () => {
                 </div>
               ) : (
                 announcements.slice(0, 3).map((announcement) => (
-                  <div key={announcement._id || announcement.id || announcement.title} className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red">
+                  <div
+                    key={
+                      announcement._id || announcement.id || announcement.title
+                    }
+                    className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red"
+                  >
                     <div className="flex items-start justify-between gap-4 mb-2">
-                      <h3 className="font-semibold line-clamp-1">{announcement.title}</h3>
+                      <h3 className="font-semibold line-clamp-1">
+                        {announcement.title}
+                      </h3>
                       <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded capitalize whitespace-nowrap">
                         {announcement.priority}
                       </span>
@@ -239,16 +251,6 @@ const CustomerDashboardContent = () => {
                 ))
               )}
             </div>
-          </div>
-
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
-              <Calendar className="text-brand-red" />
-              What this means
-            </h2>
-            <p className="text-sm text-gray-400 leading-6">
-              Messages tagged for <span className="text-white font-semibold">Customers</span> or <span className="text-white font-semibold">All</span> will appear here automatically when the admin publishes them.
-            </p>
           </div>
         </div>
 
@@ -338,76 +340,7 @@ const CustomerDashboardContent = () => {
           </Link>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-brand-red">
-            <div className="flex items-center justify-between mb-4">
-              <Activity className="text-brand-red" size={32} />
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
-                +12%
-              </span>
-            </div>
-            <h3 className="text-3xl font-bold mb-1">24</h3>
-            <p className="text-gray-400 text-sm">Workouts This Month</p>
-          </div>
-
-          <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-blue-500">
-            <div className="flex items-center justify-between mb-4">
-              <Clock className="text-blue-500" size={32} />
-            </div>
-            <h3 className="text-3xl font-bold mb-1">18.5</h3>
-            <p className="text-gray-400 text-sm">Hours Trained</p>
-          </div>
-
-          <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-yellow-500">
-            <div className="flex items-center justify-between mb-4">
-              <Target className="text-yellow-500" size={32} />
-              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">
-                85%
-              </span>
-            </div>
-            <h3 className="text-3xl font-bold mb-1">17/20</h3>
-            <p className="text-gray-400 text-sm">Monthly Goal</p>
-          </div>
-
-          <div className="bg-brand-gray p-6 rounded-xl border-l-4 border-purple-500">
-            <div className="flex items-center justify-between mb-4">
-              <Award className="text-purple-500" size={32} />
-            </div>
-            <h3 className="text-3xl font-bold mb-1">8</h3>
-            <p className="text-gray-400 text-sm">Achievements</p>
-          </div>
-        </div>
-
         <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Dumbbell className="text-brand-red" />
-              Today&apos;s Workout
-            </h2>
-            <div className="space-y-4">
-              <div className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red">
-                <h3 className="font-bold mb-1">Upper Body Strength</h3>
-                <p className="text-sm text-gray-400 mb-2">
-                  45 minutes • Intermediate
-                </p>
-                <div className="flex gap-2">
-                  <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded">
-                    Chest
-                  </span>
-                  <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded">
-                    Arms
-                  </span>
-                  <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded">
-                    Shoulders
-                  </span>
-                </div>
-              </div>
-              <button className="w-full bg-brand-red hover:bg-red-700 py-3 rounded-lg font-bold transition-colors">
-                Start Workout
-              </button>
-            </div>
-          </div>
-
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <Calendar className="text-brand-red" />

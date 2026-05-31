@@ -142,7 +142,9 @@ const CoachDashboard = () => {
           .filter((booking) => activeStatuses.has(booking.status))
           .map(
             (booking) =>
-              booking.customerEmail || booking.customerId || booking.customerName,
+              booking.customerEmail ||
+              booking.customerId ||
+              booking.customerName,
           )
           .filter(Boolean),
       );
@@ -179,7 +181,8 @@ const CoachDashboard = () => {
 
       const revenueChangePercent =
         revenuePreviousMonth > 0
-          ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) * 100
+          ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) *
+            100
           : revenueThisMonth > 0
             ? 100
             : 0;
@@ -254,12 +257,12 @@ const CoachDashboard = () => {
     try {
       setAnnouncementsLoading(true);
       const data = await AnnouncementsAPI.getAll({
-        targetAudience: 'coaches',
-        status: 'published',
+        targetAudience: "coaches",
+        status: "published",
       });
       setAnnouncements(data);
     } catch (error) {
-      console.error('Failed to load announcements:', error);
+      console.error("Failed to load announcements:", error);
     } finally {
       setAnnouncementsLoading(false);
     }
@@ -332,14 +335,23 @@ const CoachDashboard = () => {
               </div>
             ) : (
               announcements.slice(0, 3).map((announcement) => (
-                <div key={announcement._id || announcement.id || announcement.title} className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red">
+                <div
+                  key={
+                    announcement._id || announcement.id || announcement.title
+                  }
+                  className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red"
+                >
                   <div className="flex items-start justify-between gap-4 mb-2">
-                    <h3 className="font-semibold line-clamp-1">{announcement.title}</h3>
+                    <h3 className="font-semibold line-clamp-1">
+                      {announcement.title}
+                    </h3>
                     <span className="text-xs bg-brand-red/20 text-brand-red px-2 py-1 rounded capitalize whitespace-nowrap">
                       {announcement.priority}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-400 line-clamp-2">{announcement.content}</p>
+                  <p className="text-sm text-gray-400 line-clamp-2">
+                    {announcement.content}
+                  </p>
                 </div>
               ))
             )}
@@ -531,160 +543,6 @@ const CoachDashboard = () => {
               >
                 View Full Schedule
               </Link>
-            </div>
-          </div>
-
-          {/* Recent Clients */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Users className="text-brand-red" />
-              Recent Clients
-            </h2>
-            <div className="space-y-3">
-              <div className="bg-black/40 p-4 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-brand-red rounded-full flex items-center justify-center font-bold">
-                    JS
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">John Smith</h3>
-                    <p className="text-sm text-gray-400">Last session: Today</p>
-                  </div>
-                </div>
-                <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition-colors">
-                  View
-                </button>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center font-bold">
-                    ED
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Emily Davis</h3>
-                    <p className="text-sm text-gray-400">
-                      Last session: Yesterday
-                    </p>
-                  </div>
-                </div>
-                <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition-colors">
-                  View
-                </button>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center font-bold">
-                    MB
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Michael Brown</h3>
-                    <p className="text-sm text-gray-400">
-                      Last session: 2 days ago
-                    </p>
-                  </div>
-                </div>
-                <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition-colors">
-                  View
-                </button>
-              </div>
-
-              <button className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors">
-                View All Clients
-              </button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <MessageSquare className="text-brand-red" />
-              Recent Messages
-            </h2>
-            <div className="space-y-3">
-              <div className="bg-black/40 p-4 rounded-lg">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold">Sarah Wilson</h3>
-                  <span className="text-xs text-gray-400">10 min ago</span>
-                </div>
-                <p className="text-sm text-gray-400">
-                  Can we reschedule tomorrow&apos;s session?
-                </p>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold">Tom Anderson</h3>
-                  <span className="text-xs text-gray-400">1 hour ago</span>
-                </div>
-                <p className="text-sm text-gray-400">
-                  Thanks for the workout plan!
-                </p>
-              </div>
-
-              <button className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors">
-                View All Messages
-              </button>
-            </div>
-          </div>
-
-          {/* Performance */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <TrendingUp className="text-brand-red" />
-              This Month&apos;s Performance
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Sessions Completed</span>
-                  <span className="text-sm font-semibold">58 / 60</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-brand-red h-3 rounded-full"
-                    style={{ width: "96.67%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Client Retention</span>
-                  <span className="text-sm font-semibold">95%</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-green-500 h-3 rounded-full"
-                    style={{ width: "95%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Response Time</span>
-                  <span className="text-sm font-semibold">Excellent</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-blue-500 h-3 rounded-full"
-                    style={{ width: "92%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button className="bg-brand-red hover:bg-red-700 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                  <Video size={18} />
-                  Start Session
-                </button>
-                <button className="bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                  <Clock size={18} />
-                  Time Off
-                </button>
-              </div>
             </div>
           </div>
         </div>
