@@ -1,6 +1,5 @@
-// Backend API integration
-// Use the deployed backend directly so a stale Vercel env var cannot point at the wrong host.
-export const API_BASE_URL = "https://prime-fit-fitness-center-backend.vercel.app/api";
+// API base URL for local development.
+export const API_BASE_URL = "http://localhost:5000/api";
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {

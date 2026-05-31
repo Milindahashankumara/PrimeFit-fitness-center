@@ -40,43 +40,41 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        dir('fitness_center-backend') {
-                            script {
-                                def npmInstallCmd = fileExists('package-lock.json') ? 'npm ci' : 'npm install'
-                                if (isUnix()) {
-                                    sh npmInstallCmd
-                                    def lintStatus = sh(script: 'npm run lint --if-present', returnStatus: true)
-                                    if (lintStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Backend lint failed.')
-                                        }
-                                        echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                        script {
+                            def npmInstallCmd = fileExists('fitness_center-backend/package-lock.json') ? 'npm --prefix fitness_center-backend ci' : 'npm --prefix fitness_center-backend install'
+                            if (isUnix()) {
+                                sh npmInstallCmd
+                                def lintStatus = sh(script: 'npm --prefix fitness_center-backend run lint --if-present', returnStatus: true)
+                                if (lintStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Backend lint failed.')
                                     }
+                                    echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                }
 
-                                    def testStatus = sh(script: 'npm test --if-present', returnStatus: true)
-                                    if (testStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Backend tests failed.')
-                                        }
-                                        echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
+                                def testStatus = sh(script: 'npm --prefix fitness_center-backend test --if-present', returnStatus: true)
+                                if (testStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Backend tests failed.')
                                     }
-                                } else {
-                                    bat npmInstallCmd
-                                    def lintStatus = bat(script: 'npm run lint --if-present', returnStatus: true)
-                                    if (lintStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Backend lint failed.')
-                                        }
-                                        echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                    echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
+                                }
+                            } else {
+                                bat npmInstallCmd
+                                def lintStatus = bat(script: 'npm --prefix fitness_center-backend run lint --if-present', returnStatus: true)
+                                if (lintStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Backend lint failed.')
                                     }
+                                    echo 'WARNING: Backend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                }
 
-                                    def testStatus = bat(script: 'npm test --if-present', returnStatus: true)
-                                    if (testStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Backend tests failed.')
-                                        }
-                                        echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
+                                def testStatus = bat(script: 'npm --prefix fitness_center-backend test --if-present', returnStatus: true)
+                                if (testStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Backend tests failed.')
                                     }
+                                    echo 'WARNING: Backend tests failed (continuing because STRICT_QUALITY_GATE=false).'
                                 }
                             }
                         }
@@ -85,30 +83,28 @@ pipeline {
 
                 stage('Frontend') {
                     steps {
-                        dir('fitness_center-frontend') {
-                            script {
-                                def npmInstallCmd = fileExists('package-lock.json') ? 'npm ci' : 'npm install'
-                                if (isUnix()) {
-                                    sh npmInstallCmd
-                                    def lintStatus = sh(script: 'npm run lint --if-present', returnStatus: true)
-                                    if (lintStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Frontend lint failed.')
-                                        }
-                                        echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                        script {
+                            def npmInstallCmd = fileExists('fitness_center-frontend/package-lock.json') ? 'npm --prefix fitness_center-frontend ci' : 'npm --prefix fitness_center-frontend install'
+                            if (isUnix()) {
+                                sh npmInstallCmd
+                                def lintStatus = sh(script: 'npm --prefix fitness_center-frontend run lint --if-present', returnStatus: true)
+                                if (lintStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Frontend lint failed.')
                                     }
-                                    sh 'npm run build --if-present'
-                                } else {
-                                    bat npmInstallCmd
-                                    def lintStatus = bat(script: 'npm run lint --if-present', returnStatus: true)
-                                    if (lintStatus != 0) {
-                                        if (params.STRICT_QUALITY_GATE) {
-                                            error('Frontend lint failed.')
-                                        }
-                                        echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
-                                    }
-                                    bat 'npm run build --if-present'
+                                    echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
                                 }
+                                sh 'npm --prefix fitness_center-frontend run build --if-present'
+                            } else {
+                                bat npmInstallCmd
+                                def lintStatus = bat(script: 'npm --prefix fitness_center-frontend run lint --if-present', returnStatus: true)
+                                if (lintStatus != 0) {
+                                    if (params.STRICT_QUALITY_GATE) {
+                                        error('Frontend lint failed.')
+                                    }
+                                    echo 'WARNING: Frontend lint failed (continuing because STRICT_QUALITY_GATE=false).'
+                                }
+                                bat 'npm --prefix fitness_center-frontend run build --if-present'
                             }
                         }
                     }
@@ -119,21 +115,12 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    // dir(...) is the Jenkins equivalent of cd.
-                    dir('fitness_center-backend') {
-                        if (isUnix()) {
-                            sh "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f Dockerfile ."
-                        } else {
-                            bat "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f Dockerfile ."
-                        }
-                    }
-
-                    dir('fitness_center-frontend') {
-                        if (isUnix()) {
-                            sh "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f Dockerfile ."
-                        } else {
-                            bat "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f Dockerfile ."
-                        }
+                    if (isUnix()) {
+                        sh "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f fitness_center-backend/Dockerfile fitness_center-backend"
+                        sh "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f fitness_center-frontend/Dockerfile fitness_center-frontend"
+                    } else {
+                        bat "docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -f fitness_center-backend/Dockerfile fitness_center-backend"
+                        bat "docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} -f fitness_center-frontend/Dockerfile fitness_center-frontend"
                     }
                 }
             }

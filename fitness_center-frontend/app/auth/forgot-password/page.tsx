@@ -14,7 +14,9 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
-    setMessage("If that email exists, your team can handle the reset flow from here.");
+    setMessage(
+      "If that email exists, your team can handle the reset flow from here.",
+    );
     setLoading(false);
   };
 
@@ -46,7 +48,10 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <Mail
+                    className="absolute left-3 top-3 text-gray-400"
+                    size={20}
+                  />
                   <input
                     type="email"
                     value={email}
