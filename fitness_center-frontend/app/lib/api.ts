@@ -1,8 +1,8 @@
 // Backend API integration
-// This connects to the real backend at http://localhost:5000
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+// The deployed frontend should use NEXT_PUBLIC_API_URL; local dev can override it.
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://prime-fit-fitness-center-backend.vercel.app/api";
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -359,10 +359,13 @@ export const AnnouncementsAPI = {
     id: string,
     payload: Partial<Announcement>,
   ): Promise<Announcement> => {
-    const response = await fetchWithAuth(`${API_BASE_URL}/announcements/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/announcements/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+    );
     return response.data;
   },
 
