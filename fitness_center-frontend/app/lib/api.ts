@@ -1,8 +1,6 @@
 // Backend API integration
-// The deployed frontend should use NEXT_PUBLIC_API_URL; local dev can override it.
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://prime-fit-fitness-center-backend.vercel.app/api";
+// Use the deployed backend directly so a stale Vercel env var cannot point at the wrong host.
+export const API_BASE_URL = "https://prime-fit-fitness-center-backend.vercel.app/api";
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
