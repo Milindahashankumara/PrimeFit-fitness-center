@@ -13,7 +13,6 @@ import {
   MessageSquare,
   DollarSign,
   Video,
-  MapPin,
   AlertCircle,
   CheckCircle,
   Filter,
@@ -37,6 +36,22 @@ interface BookingRequest {
   originalTime?: string;
   rescheduleReason?: string;
 }
+
+const toBookingStatus = (value: string): BookingRequest["status"] => {
+  const allowedStatuses: BookingRequest["status"][] = [
+    "pending",
+    "accepted",
+    "rejected",
+    "completed",
+    "rescheduled",
+  ];
+
+  if (allowedStatuses.includes(value as BookingRequest["status"])) {
+    return value as BookingRequest["status"];
+  }
+
+  return "pending";
+};
 
 const BookingRequestsPage = () => {
   const router = useRouter();
@@ -82,7 +97,7 @@ const BookingRequestsPage = () => {
           sessionType: booking.type,
           duration: booking.duration,
           price: booking.price,
-          status: booking.status as any,
+          status: toBookingStatus(booking.status),
           message: booking.message,
           requestedAt: booking.requestedAt,
         }));
@@ -129,7 +144,7 @@ const BookingRequestsPage = () => {
         rescheduledBy: "coach",
         rescheduledAt: new Date().toISOString(),
         status: "rescheduled",
-      } as any);
+      });
 
       // Update local state
       setBookingRequests(
@@ -143,7 +158,7 @@ const BookingRequestsPage = () => {
                 time: rescheduleData.time,
                 rescheduleReason: rescheduleData.reason,
                 rescheduledBy: "coach",
-                status: "rescheduled" as any,
+                status: "rescheduled",
               }
             : req,
         ),
@@ -168,7 +183,7 @@ const BookingRequestsPage = () => {
       try {
         await BookingsAPI.update(request._id, {
           status: "completed",
-        } as any);
+        });
 
         setBookingRequests(
           bookingRequests.map((req) =>
@@ -194,7 +209,7 @@ const BookingRequestsPage = () => {
         // Update booking status in API using MongoDB _id
         await BookingsAPI.update(selectedRequest._id, {
           status: actionType === "accept" ? "accepted" : "rejected",
-        } as any);
+        });
 
         // Update local state
         setBookingRequests(
@@ -647,7 +662,7 @@ const BookingRequestsPage = () => {
             {actionType === "accept" ? (
               <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg mb-4">
                 <p className="text-green-400 text-sm">
-                  By accepting this request, you confirm that you're available
+                  By accepting this request, you confirm that you are available
                   for this session. The client will be notified immediately.
                 </p>
               </div>

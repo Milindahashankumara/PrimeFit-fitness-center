@@ -13,15 +13,11 @@ const generateToken = (id) => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    console.log("Registering new user...");
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
-
     const { name, email, password, phone, role, ...otherFields } = req.body;
 
     // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      console.log("User already exists:", email);
       return res.status(400).json({
         success: false,
         message: "User already exists with this email",
@@ -49,13 +45,7 @@ exports.register = async (req, res) => {
       userData.documents = otherFields.documents || [];
     }
 
-    console.log("Saving user to MongoDB:", JSON.stringify(userData, null, 2));
-
-    // Create user
     const user = await User.create(userData);
-
-    console.log("User saved to MongoDB successfully!");
-    console.log("User ID:", user._id);
 
     if (user) {
       const token = generateToken(user._id);
@@ -74,8 +64,6 @@ exports.register = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error registering user:", error.message);
-    console.error("Stack:", error.stack);
     res.status(400).json({
       success: false,
       message: error.message,
@@ -88,16 +76,12 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
-    console.log("Login attempt...");
-    console.log("Email:", req.body.email, "Role:", req.body.role);
-
     const { email, password, role } = req.body;
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : email;
 
     // Validate email & password
     if (!email || !password) {
-      console.log("Missing email or password");
       return res.status(400).json({
         success: false,
         message: "Please provide email and password",
@@ -110,18 +94,14 @@ exports.login = async (req, res) => {
     );
 
     if (!user) {
-      console.log("User not found:", email);
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    console.log("User found:", user.name, "- Role:", user.role);
-
     // Check if role matches (if role is specified)
     if (role && user.role !== role) {
-      console.log("Role mismatch. Expected:", role, "Got:", user.role);
       return res.status(401).json({
         success: false,
         message: `Invalid credentials for ${role} login`,
@@ -130,7 +110,6 @@ exports.login = async (req, res) => {
 
     // Check if coach is approved (if user is coach)
     if (user.role === "coach" && user.coachStatus !== "approved") {
-      console.log("Coach not approved. Status:", user.coachStatus);
       return res.status(403).json({
         success: false,
         message: "Your coach application is still pending approval",
@@ -141,7 +120,6 @@ exports.login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
-      console.log("Password mismatch");
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
@@ -149,8 +127,6 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(user._id);
-
-    console.log("Login successful! Token generated for user:", user._id);
 
     res.status(200).json({
       success: true,
@@ -165,7 +141,6 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error.message);
     res.status(500).json({
       success: false,
       message: error.message,

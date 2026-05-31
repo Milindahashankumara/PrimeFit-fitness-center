@@ -3,75 +3,77 @@
 import React, { useState, useEffect } from "react";
 import { Quote, ArrowLeft, ArrowRight, Star } from "lucide-react";
 import Image from "next/image";
+import { FeedbackAPI } from "@/app/lib/api";
 
 interface Testimonial {
   id: string;
-  name: string;
-  role: string;
+  customerName: string;
   rating: number;
   text: string;
   date: string;
   coachName?: string;
 }
 
+type TestimonialResponse = {
+  _id?: string;
+  id?: string;
+  customerName?: string;
+  rating?: number;
+  feedback?: string;
+  submittedDate?: string;
+  createdAt?: string;
+  coachName?: string;
+};
+
 const Testimonials = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([
-    {
-      id: "default",
-      name: "Steven Smith",
-      role: "Our Trainer",
-      rating: 5,
-      text: "I've been using PrimeFit for the past three months, and I'm genuinely impressed. The website is easy to navigate, and everything is laid out clearly. I purchased the Premium Plan, and the customized coaching has been a game-changer for me. Highly recommended!",
-      date: "2026-01-01",
-    },
-  ]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load approved testimonials from localStorage
-    const loadTestimonials = () => {
+    let isMounted = true;
+
+    const loadTestimonials = async () => {
       try {
-        const approvedTestimonials = localStorage.getItem(
-          "approvedTestimonials",
-        );
-        if (approvedTestimonials) {
-          const parsed = JSON.parse(approvedTestimonials);
-          if (parsed.length > 0) {
-            // Combine default testimonial with approved ones
-            setTestimonials([
-              {
-                id: "default",
-                name: "Steven Smith",
-                role: "Our Trainer",
-                rating: 5,
-                text: "I've been using PrimeFit for the past three months, and I'm genuinely impressed. The website is easy to navigate, and everything is laid out clearly. I purchased the Premium Plan, and the customized coaching has been a game-changer for me. Highly recommended!",
-                date: "2026-01-01",
-              },
-              ...parsed,
-            ]);
-          }
-        }
+        const approvedTestimonials =
+          await FeedbackAPI.getApprovedTestimonials();
+
+        if (!isMounted) return;
+
+        const mappedTestimonials = (
+          approvedTestimonials as TestimonialResponse[]
+        ).map((item, index) => ({
+          id: item._id || item.id || `testimonial-${index}`,
+          customerName: item.customerName || "Customer",
+          rating: Number(item.rating) || 0,
+          text: item.feedback || "",
+          date:
+            item.submittedDate || item.createdAt || new Date().toISOString(),
+          coachName: item.coachName,
+        }));
+
+        setTestimonials(mappedTestimonials);
+        setCurrentIndex(0);
       } catch (error) {
         console.error("Error loading testimonials:", error);
+        if (isMounted) {
+          setTestimonials([]);
+          setCurrentIndex(0);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadTestimonials();
 
-    // Listen for storage changes to update in real-time
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "approvedTestimonials") {
-        loadTestimonials();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    // Also check for updates every 2 seconds (for same-tab updates)
-    const interval = setInterval(loadTestimonials, 2000);
+    // Refresh periodically so newly approved testimonials appear without code changes.
+    const interval = setInterval(loadTestimonials, 10000);
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      isMounted = false;
       clearInterval(interval);
     };
   }, []);
@@ -90,6 +92,13 @@ const Testimonials = () => {
 
   const currentTestimonial = testimonials[currentIndex];
 
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
   return (
     <section className="py-20 bg-brand-dark overflow-hidden">
       <div className="max-w-7xl mx-auto px-4">
@@ -107,7 +116,7 @@ const Testimonials = () => {
           )}
         </div>
 
-        <div className="relative bg-gradient-to-r from-brand-red/10 to-transparent p-1 rounded-2xl border border-brand-red/20">
+        <div className="relative bg-linear-to-r from-brand-red/10 to-transparent p-1 rounded-2xl border border-brand-red/20">
           <div className="grid md:grid-cols-2 items-center">
             {/* Left Image */}
             <div className="hidden md:block relative h-[500px]">
@@ -124,39 +133,50 @@ const Testimonials = () => {
               <div className="bg-[#800000] p-8 rounded-xl relative shadow-2xl min-h-[400px] flex flex-col">
                 <Quote className="absolute top-4 right-4 text-white/20 w-12 h-12" />
 
-                <h3 className="text-2xl font-bold mb-1">
-                  {currentTestimonial.name}
-                </h3>
-                <p className="text-gray-300 text-xs mb-3">
-                  {currentTestimonial.role}
-                </p>
+                {loading ? (
+                  <div className="flex-1 flex items-center justify-center text-gray-300">
+                    Loading testimonials...
+                  </div>
+                ) : currentTestimonial ? (
+                  <>
+                    <h3 className="text-2xl font-bold mb-1">
+                      {currentTestimonial.customerName}
+                    </h3>
+                    <p className="text-gray-300 text-xs mb-1">
+                      {formatDate(currentTestimonial.date)}
+                    </p>
+                    {currentTestimonial.coachName && (
+                      <p className="text-gray-400 text-xs mb-3">
+                        Client of {currentTestimonial.coachName}
+                      </p>
+                    )}
 
-                {/* Star Rating */}
-                <div className="flex items-center gap-1 mb-6">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      size={18}
-                      className={
-                        star <= currentTestimonial.rating
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-500"
-                      }
-                    />
-                  ))}
-                  <span className="ml-2 text-sm text-gray-300">
-                    ({currentTestimonial.rating}/5)
-                  </span>
-                </div>
+                    {/* Star Rating */}
+                    <div className="flex items-center gap-1 mb-6">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={18}
+                          className={
+                            star <= currentTestimonial.rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-500"
+                          }
+                        />
+                      ))}
+                      <span className="ml-2 text-sm text-gray-300">
+                        ({currentTestimonial.rating}/5)
+                      </span>
+                    </div>
 
-                <p className="text-gray-200 leading-relaxed mb-6 flex-1">
-                  "{currentTestimonial.text}"
-                </p>
-
-                {currentTestimonial.coachName && (
-                  <p className="text-xs text-gray-400 mb-4">
-                    Client of {currentTestimonial.coachName}
-                  </p>
+                    <p className="text-gray-200 leading-relaxed mb-6 flex-1">
+                      "{currentTestimonial.text}"
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-300 text-center">
+                    No approved testimonials yet.
+                  </div>
                 )}
 
                 {/* Navigation Buttons */}

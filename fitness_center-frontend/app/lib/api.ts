@@ -1,13 +1,14 @@
-// API base URL for local development.
-export const API_BASE_URL = "http://localhost:5000/api";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-// Helper function to get auth token
+export const API_BASE_URL = (
+  configuredApiUrl || "http://localhost:5000/api"
+).replace(/\/+$/, "");
+
 const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 };
 
-// Helper function to make authenticated requests
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
   const isFormData =
@@ -22,11 +23,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-  } else {
-    console.warn("Warning: No auth token found - user may need to login");
   }
-
-  console.log("API Request:", url);
 
   const response = await fetch(url, {
     ...options,
@@ -37,17 +34,18 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const error = await response
       .json()
       .catch(() => ({ message: "Request failed" }));
-    console.error("API Error:", error.message);
 
-    // If unauthorized, clear invalid token
     if (response.status === 401) {
-      console.warn("Warning: Unauthorized - clearing token");
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
       }
     }
 
     throw new Error(error.message || "Request failed");
+  }
+
+  if (response.status === 204) {
+    return null;
   }
 
   return response.json();
@@ -539,6 +537,22 @@ export interface SubscriptionOverview {
 
 // Feedback API
 export const FeedbackAPI = {
+  // Get approved testimonials for the public homepage
+  getApprovedTestimonials: async (): Promise<Feedback[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/feedback/testimonials`);
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    } catch (error) {
+      console.error("Failed to fetch approved testimonials:", error);
+      return [];
+    }
+  },
+
   // Get all feedback
   getAll: async (): Promise<Feedback[]> => {
     try {

@@ -1,34 +1,29 @@
-'use client';
+"use client";
 
-import React, { useState, use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { BookingsAPI, CoachesAPI } from '@/app/lib/api';
-import { 
-  ArrowLeft, 
-  Star, 
-  Award, 
-  Users, 
-  Clock, 
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { BookingsAPI, CoachesAPI } from "@/app/lib/api";
+import {
+  ArrowLeft,
+  Star,
+  Award,
+  Users,
+  Clock,
   Calendar,
   CheckCircle,
   Video,
   MessageSquare,
   Shield,
   TrendingUp,
-  Heart,
   X,
   Check,
-  AlertCircle
-} from 'lucide-react';
+  AlertCircle,
+} from "lucide-react";
 
 interface TimeSlot {
   time: string;
   available: boolean;
   date: string;
-}
-
-interface Params {
-  id: string;
 }
 
 interface Coach {
@@ -48,58 +43,74 @@ interface Coach {
   coachStatus?: string;
 }
 
-const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
-  const resolvedParams = use(params);
+interface CustomerUser {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+const CoachDetailPage = () => {
+  const params = useParams<{ id: string }>();
+  const coachId = params?.id || "";
   const router = useRouter();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
+    null,
+  );
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [sessionType, setSessionType] = useState<'personal' | 'group'>('personal');
+  const [sessionType, setSessionType] = useState<"personal" | "group">(
+    "personal",
+  );
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
+  const [reviewText, setReviewText] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
-  // Load coach data from API
-  useEffect(() => {
-    loadCoachData();
-  }, [resolvedParams.id]);
-
-  const loadCoachData = async () => {
+  const loadCoachData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Validate ID format (MongoDB ObjectId is 24 hex characters)
-      const id = resolvedParams.id;
+
+      const id = coachId;
       if (!id || id.length !== 24 || !/^[a-f\d]{24}$/i.test(id)) {
-        setError('Invalid coach ID format');
+        setError("Invalid coach ID format");
         setLoading(false);
         return;
       }
-      
+
       const coachData = await CoachesAPI.getById(id);
       if (!coachData) {
-        setError('Coach not found');
+        setError("Coach not found");
         setLoading(false);
         return;
       }
-      
+
       setCoach(coachData);
       setLoading(false);
-    } catch (err: any) {
-      console.error('Failed to load coach:', err);
-      setError(err.message || 'Failed to load coach details');
+    } catch (error) {
+      setError(getErrorMessage(error, "Failed to load coach details"));
       setLoading(false);
     }
-  };
+  }, [coachId]);
 
-  // Generate next 7 days
+  useEffect(() => {
+    loadCoachData();
+  }, [loadCoachData]);
+
   const generateDates = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -110,78 +121,87 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
     return dates;
   };
 
-  // Generate time slots for selected date
   const generateTimeSlots = (date: Date): TimeSlot[] => {
     const slots: TimeSlot[] = [];
-    const hours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
-    
-    hours.forEach(time => {
-      // Randomly mark some slots as unavailable for demo
-      const available = Math.random() > 0.3;
+    const hours = [
+      "09:00",
+      "10:00",
+      "11:00",
+      "12:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+      "19:00",
+    ];
+
+    hours.forEach((time) => {
       slots.push({
         time,
-        available,
-        date: date.toISOString()
+        available: true,
+        date: date.toISOString(),
       });
     });
-    
+
     return slots;
   };
 
-  const dates = generateDates();
-  const timeSlots = generateTimeSlots(selectedDate);
+  const dates = useMemo(() => generateDates(), []);
+  const timeSlots = useMemo(
+    () => generateTimeSlots(selectedDate),
+    [selectedDate],
+  );
 
   const handleBooking = async () => {
     if (!selectedTimeSlot || !coach) return;
-    
-    // Get user data
-    const userData = localStorage.getItem('user');
-    const user = userData ? JSON.parse(userData) : null;
-    
-    if (!user) {
-      alert('Please log in to book a session');
+
+    const userData = localStorage.getItem("user");
+    const user = userData ? (JSON.parse(userData) as CustomerUser) : null;
+    const customerId = user?.id || user?._id;
+
+    if (!user || !customerId) {
+      alert("Please log in to book a session");
       return;
     }
 
     try {
-      // Create booking using API
-      const booking = await BookingsAPI.create({
-        customerId: user.id || user._id, // Use MongoDB user ID
+      await BookingsAPI.create({
+        customerId,
         customerName: user.name,
         customerEmail: user.email,
-        coachId: coach._id || coach.id || resolvedParams.id,
+        coachId: coach._id || coach.id || coachId,
         coachName: coach.name,
-        date: selectedTimeSlot.date.split('T')[0],
+        date: selectedTimeSlot.date.split("T")[0],
         time: selectedTimeSlot.time,
         type: sessionType,
         duration: 60,
         price: coach.hourlyRate || 0,
-        sessionType: coach.specializations?.[0] || 'Training',
-        location: sessionType === 'personal' ? 'Studio A' : 'Online',
+        sessionType: coach.specializations?.[0] || "Training",
+        location: sessionType === "personal" ? "Studio A" : "Online",
         message: `Booking for ${sessionType} training session`,
-        status: 'pending'
-      } as any);
-
-      console.log('Booking created:', booking);
+        status: "pending",
+      });
 
       setBookingConfirmed(true);
       setTimeout(() => {
         setShowBookingModal(false);
         setBookingConfirmed(false);
-        router.push('/dashboard/customer?bookingSuccess=true');
+        router.push("/dashboard/customer?bookingSuccess=true");
       }, 2000);
     } catch (error) {
-      console.error('Booking failed:', error);
-      alert('Failed to create booking. Please try again.');
+      alert(
+        getErrorMessage(error, "Failed to create booking. Please try again."),
+      );
     }
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const getDayName = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString("en-US", { weekday: "short" });
   };
 
   const isToday = (date: Date) => {
@@ -190,14 +210,12 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
   };
 
   const handleRatingSubmit = () => {
-    // Here you would normally send to backend
-    console.log('Submitting rating:', { rating, reviewText });
     setRatingSubmitted(true);
     setTimeout(() => {
       setShowRatingModal(false);
       setRatingSubmitted(false);
       setRating(0);
-      setReviewText('');
+      setReviewText("");
     }, 2000);
   };
 
@@ -218,7 +236,9 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
         <div className="text-center">
           <AlertCircle className="mx-auto mb-4 text-red-500" size={64} />
           <h2 className="text-2xl font-bold mb-2">Coach Not Found</h2>
-          <p className="text-gray-400 mb-6">{error || 'Unable to load coach details'}</p>
+          <p className="text-gray-400 mb-6">
+            {error || "Unable to load coach details"}
+          </p>
           <button
             onClick={() => router.back()}
             className="bg-brand-red hover:bg-red-700 px-6 py-3 rounded-lg font-semibold transition-colors"
@@ -236,12 +256,17 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
       <header className="bg-brand-gray border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="hover:text-brand-red transition-colors">
+            <button
+              onClick={() => router.back()}
+              className="hover:text-brand-red transition-colors"
+            >
               <ArrowLeft size={24} />
             </button>
             <div>
               <h1 className="text-2xl font-bold">Coach Profile</h1>
-              <p className="text-sm text-gray-400">View details and book a session</p>
+              <p className="text-sm text-gray-400">
+                View details and book a session
+              </p>
             </div>
           </div>
         </div>
@@ -255,13 +280,21 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
             <div className="bg-brand-gray rounded-2xl overflow-hidden border border-white/10">
               <div className="relative bg-gradient-to-br from-brand-red to-red-900 p-8 text-center">
                 <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center text-brand-red text-4xl font-bold mx-auto shadow-2xl mb-4">
-                  {coach.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  {coach.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
                 </div>
                 <h2 className="text-3xl font-bold mb-2">{coach.name}</h2>
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Star className="text-yellow-400 fill-yellow-400" size={20} />
-                  <span className="text-2xl font-bold">{coach.rating || 0}</span>
-                  <span className="text-white/80">({coach.reviewCount || 0} reviews)</span>
+                  <span className="text-2xl font-bold">
+                    {coach.rating || 0}
+                  </span>
+                  <span className="text-white/80">
+                    ({coach.reviewCount || 0} reviews)
+                  </span>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-white/90">
                   <Award size={18} />
@@ -272,9 +305,12 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
               <div className="p-6 space-y-4">
                 {/* Specializations */}
                 <div>
-                  <p className="text-xs text-gray-400 mb-3 font-semibold">SPECIALIZATIONS</p>
+                  <p className="text-xs text-gray-400 mb-3 font-semibold">
+                    SPECIALIZATIONS
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {coach.specializations && coach.specializations.length > 0 ? (
+                    {coach.specializations &&
+                    coach.specializations.length > 0 ? (
                       coach.specializations.map((spec) => (
                         <span
                           key={spec}
@@ -284,7 +320,9 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-gray-500">No specializations listed</span>
+                      <span className="text-sm text-gray-500">
+                        No specializations listed
+                      </span>
                     )}
                   </div>
                 </div>
@@ -292,7 +330,10 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                 {/* Price */}
                 <div className="bg-black/40 p-4 rounded-xl">
                   <p className="text-sm text-gray-400 mb-1">Session Price</p>
-                  <p className="text-3xl font-bold text-brand-red">LKR {coach.hourlyRate || 0}<span className="text-lg text-gray-400">/hour</span></p>
+                  <p className="text-3xl font-bold text-brand-red">
+                    LKR {coach.hourlyRate || 0}
+                    <span className="text-lg text-gray-400">/hour</span>
+                  </p>
                 </div>
 
                 {/* Quick Stats */}
@@ -342,13 +383,18 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
               <div className="space-y-2">
                 {coach.certifications && coach.certifications.length > 0 ? (
                   coach.certifications.map((cert, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm">
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <CheckCircle className="text-green-500" size={16} />
                       <span>{cert}</span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-400 text-sm">No certifications listed</p>
+                  <p className="text-gray-400 text-sm">
+                    No certifications listed
+                  </p>
                 )}
               </div>
             </div>
@@ -359,7 +405,9 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
             {/* About */}
             <div className="bg-brand-gray rounded-2xl p-6 border border-white/10">
               <h3 className="font-bold text-2xl mb-4">About Coach</h3>
-              <p className="text-gray-300 leading-relaxed">{coach.bio || 'No bio available'}</p>
+              <p className="text-gray-300 leading-relaxed">
+                {coach.bio || "No bio available"}
+              </p>
             </div>
 
             {/* Performance Stats */}
@@ -370,19 +418,27 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-black/40 p-4 rounded-xl text-center border-l-4 border-brand-red">
-                  <p className="text-3xl font-bold text-brand-red">{coach.activeClients || 0}</p>
+                  <p className="text-3xl font-bold text-brand-red">
+                    {coach.activeClients || 0}
+                  </p>
                   <p className="text-sm text-gray-400 mt-1">Active Clients</p>
                 </div>
                 <div className="bg-black/40 p-4 rounded-xl text-center border-l-4 border-green-500">
-                  <p className="text-3xl font-bold text-green-500">{coach.experience || 0}+</p>
+                  <p className="text-3xl font-bold text-green-500">
+                    {coach.experience || 0}+
+                  </p>
                   <p className="text-sm text-gray-400 mt-1">Years Experience</p>
                 </div>
                 <div className="bg-black/40 p-4 rounded-xl text-center border-l-4 border-yellow-500">
-                  <p className="text-3xl font-bold text-yellow-500">{coach.rating?.toFixed(1) || 0}</p>
+                  <p className="text-3xl font-bold text-yellow-500">
+                    {coach.rating?.toFixed(1) || 0}
+                  </p>
                   <p className="text-sm text-gray-400 mt-1">Avg Rating</p>
                 </div>
                 <div className="bg-black/40 p-4 rounded-xl text-center border-l-4 border-blue-500">
-                  <p className="text-3xl font-bold text-blue-500">{coach.reviewCount || 0}</p>
+                  <p className="text-3xl font-bold text-blue-500">
+                    {coach.reviewCount || 0}
+                  </p>
                   <p className="text-sm text-gray-400 mt-1">Total Reviews</p>
                 </div>
               </div>
@@ -397,8 +453,14 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                 </h3>
                 <div className="grid md:grid-cols-2 gap-3">
                   {coach.achievements.map((achievement, index) => (
-                    <div key={index} className="bg-black/40 p-4 rounded-xl flex items-start gap-3 border-l-4 border-brand-red">
-                      <CheckCircle className="text-brand-red shrink-0 mt-1" size={20} />
+                    <div
+                      key={index}
+                      className="bg-black/40 p-4 rounded-xl flex items-start gap-3 border-l-4 border-brand-red"
+                    >
+                      <CheckCircle
+                        className="text-brand-red shrink-0 mt-1"
+                        size={20}
+                      />
                       <span className="text-sm">{achievement}</span>
                     </div>
                   ))}
@@ -421,7 +483,11 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                           <p className="font-semibold">John Doe {review}</p>
                           <div className="flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="text-yellow-400 fill-yellow-400" size={14} />
+                              <Star
+                                key={i}
+                                className="text-yellow-400 fill-yellow-400"
+                                size={14}
+                              />
                             ))}
                           </div>
                         </div>
@@ -429,7 +495,8 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                       <span className="text-xs text-gray-400">2 weeks ago</span>
                     </div>
                     <p className="text-sm text-gray-300">
-                      Excellent coach! Very professional and motivating. Helped me achieve my goals faster than expected.
+                      Excellent coach! Very professional and motivating. Helped
+                      me achieve my goals faster than expected.
                     </p>
                   </div>
                 ))}
@@ -450,14 +517,26 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                   <Check size={48} className="text-white" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Booking Confirmed!</h2>
-                <p className="text-gray-400 mb-2">Your session with {coach.name} has been booked</p>
+                <p className="text-gray-400 mb-2">
+                  Your session with {coach.name} has been booked
+                </p>
                 <p className="text-xl font-semibold text-brand-red mb-8">
                   {formatDate(selectedDate)} at {selectedTimeSlot?.time}
                 </p>
                 <div className="bg-black/40 p-6 rounded-xl mb-8">
                   <p className="text-sm text-gray-400 mb-2">Session Details</p>
-                  <p className="font-semibold mb-1">{sessionType === 'personal' ? 'Personal Training' : 'Group Session'}</p>
-                  <p className="text-brand-red font-bold">LKR {sessionType === 'personal' ? coach.hourlyRate : (coach.hourlyRate ?? 0) * 0.7}/hour</p>
+                  <p className="font-semibold mb-1">
+                    {sessionType === "personal"
+                      ? "Personal Training"
+                      : "Group Session"}
+                  </p>
+                  <p className="text-brand-red font-bold">
+                    LKR{" "}
+                    {sessionType === "personal"
+                      ? coach.hourlyRate
+                      : (coach.hourlyRate ?? 0) * 0.7}
+                    /hour
+                  </p>
                 </div>
                 <p className="text-sm text-gray-400">
                   A confirmation email has been sent to your inbox
@@ -471,7 +550,7 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                     <h2 className="text-2xl font-bold">Book a Session</h2>
                     <p className="text-sm text-gray-400">with {coach.name}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowBookingModal(false)}
                     className="hover:text-brand-red transition-colors"
                   >
@@ -482,38 +561,52 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                 <div className="p-6 space-y-6">
                   {/* Session Type */}
                   <div>
-                    <label className="text-sm font-semibold mb-3 block">Session Type</label>
+                    <label className="text-sm font-semibold mb-3 block">
+                      Session Type
+                    </label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
-                        onClick={() => setSessionType('personal')}
+                        onClick={() => setSessionType("personal")}
                         className={`p-4 rounded-xl border-2 transition-all ${
-                          sessionType === 'personal'
-                            ? 'border-brand-red bg-brand-red/20'
-                            : 'border-white/10 bg-black/40 hover:border-brand-red/50'
+                          sessionType === "personal"
+                            ? "border-brand-red bg-brand-red/20"
+                            : "border-white/10 bg-black/40 hover:border-brand-red/50"
                         }`}
                       >
-                        <Users className="mx-auto mb-2 text-brand-red" size={24} />
+                        <Users
+                          className="mx-auto mb-2 text-brand-red"
+                          size={24}
+                        />
                         <p className="font-semibold">Personal Training</p>
-                        <p className="text-sm text-gray-400 mt-1">LKR {coach.hourlyRate}/hour</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          LKR {coach.hourlyRate}/hour
+                        </p>
                       </button>
                       <button
-                        onClick={() => setSessionType('group')}
+                        onClick={() => setSessionType("group")}
                         className={`p-4 rounded-xl border-2 transition-all ${
-                          sessionType === 'group'
-                            ? 'border-brand-red bg-brand-red/20'
-                            : 'border-white/10 bg-black/40 hover:border-brand-red/50'
+                          sessionType === "group"
+                            ? "border-brand-red bg-brand-red/20"
+                            : "border-white/10 bg-black/40 hover:border-brand-red/50"
                         }`}
                       >
-                        <Users className="mx-auto mb-2 text-brand-red" size={24} />
+                        <Users
+                          className="mx-auto mb-2 text-brand-red"
+                          size={24}
+                        />
                         <p className="font-semibold">Group Session</p>
-                        <p className="text-sm text-gray-400 mt-1">LKR {(coach.hourlyRate ?? 0) * 0.7}/hour</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          LKR {(coach.hourlyRate ?? 0) * 0.7}/hour
+                        </p>
                       </button>
                     </div>
                   </div>
 
                   {/* Date Selection */}
                   <div>
-                    <label className="text-sm font-semibold mb-3 block">Select Date</label>
+                    <label className="text-sm font-semibold mb-3 block">
+                      Select Date
+                    </label>
                     <div className="grid grid-cols-7 gap-2">
                       {dates.map((date) => (
                         <button
@@ -524,11 +617,13 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                           }}
                           className={`p-3 rounded-xl text-center transition-all ${
                             selectedDate.toDateString() === date.toDateString()
-                              ? 'bg-brand-red border-2 border-brand-red'
-                              : 'bg-black/40 border-2 border-white/10 hover:border-brand-red/50'
+                              ? "bg-brand-red border-2 border-brand-red"
+                              : "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
                           }`}
                         >
-                          <p className="text-xs text-gray-400">{getDayName(date)}</p>
+                          <p className="text-xs text-gray-400">
+                            {getDayName(date)}
+                          </p>
                           <p className="font-bold">{date.getDate()}</p>
                           {isToday(date) && (
                             <p className="text-xs text-brand-red mt-1">Today</p>
@@ -551,10 +646,10 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                           onClick={() => setSelectedTimeSlot(slot)}
                           className={`p-3 rounded-lg text-center transition-all ${
                             selectedTimeSlot?.time === slot.time
-                              ? 'bg-brand-red border-2 border-brand-red'
+                              ? "bg-brand-red border-2 border-brand-red"
                               : slot.available
-                              ? 'bg-black/40 border-2 border-white/10 hover:border-brand-red/50'
-                              : 'bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed'
+                                ? "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
+                                : "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed"
                           }`}
                         >
                           <Clock size={16} className="mx-auto mb-1" />
@@ -578,20 +673,29 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Date:</span>
-                          <span className="font-semibold">{formatDate(selectedDate)}</span>
+                          <span className="font-semibold">
+                            {formatDate(selectedDate)}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Time:</span>
-                          <span className="font-semibold">{selectedTimeSlot.time}</span>
+                          <span className="font-semibold">
+                            {selectedTimeSlot.time}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Session Type:</span>
-                          <span className="font-semibold capitalize">{sessionType}</span>
+                          <span className="font-semibold capitalize">
+                            {sessionType}
+                          </span>
                         </div>
                         <div className="border-t border-white/10 pt-2 mt-2 flex justify-between">
                           <span className="text-gray-400">Total:</span>
                           <span className="font-bold text-brand-red text-lg">
-                            LKR {sessionType === 'personal' ? coach.hourlyRate : (coach.hourlyRate ?? 0) * 0.7}
+                            LKR{" "}
+                            {sessionType === "personal"
+                              ? coach.hourlyRate
+                              : (coach.hourlyRate ?? 0) * 0.7}
                           </span>
                         </div>
                       </div>
@@ -625,9 +729,11 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                   <Star size={48} className="text-white fill-white" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Thank You!</h2>
-                <p className="text-gray-400 mb-2">Your rating has been submitted</p>
+                <p className="text-gray-400 mb-2">
+                  Your rating has been submitted
+                </p>
                 <p className="text-xl font-semibold text-yellow-400">
-                  {rating} Star{rating !== 1 ? 's' : ''}
+                  {rating} Star{rating !== 1 ? "s" : ""}
                 </p>
               </div>
             ) : (
@@ -635,21 +741,27 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                 {/* Modal Header */}
                 <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-6 rounded-t-2xl">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-white">Rate Your Coach</h2>
-                    <button 
+                    <h2 className="text-2xl font-bold text-white">
+                      Rate Your Coach
+                    </h2>
+                    <button
                       onClick={() => setShowRatingModal(false)}
                       className="text-white hover:text-gray-200 transition-colors"
                     >
                       <X size={24} />
                     </button>
                   </div>
-                  <p className="text-white/90">Share your experience with {coach.name}</p>
+                  <p className="text-white/90">
+                    Share your experience with {coach.name}
+                  </p>
                 </div>
 
                 <div className="p-6 space-y-6">
                   {/* Star Rating */}
                   <div className="text-center">
-                    <p className="text-sm font-semibold mb-4">How was your experience?</p>
+                    <p className="text-sm font-semibold mb-4">
+                      How was your experience?
+                    </p>
                     <div className="flex justify-center gap-2 mb-4">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -659,12 +771,12 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                           onMouseLeave={() => setHoverRating(0)}
                           className="transition-transform hover:scale-125"
                         >
-                          <Star 
-                            size={48} 
+                          <Star
+                            size={48}
                             className={`${
                               star <= (hoverRating || rating)
-                                ? 'text-yellow-400 fill-yellow-400'
-                                : 'text-gray-600'
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-600"
                             } transition-colors`}
                           />
                         </button>
@@ -672,11 +784,11 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
                     </div>
                     {rating > 0 && (
                       <p className="text-yellow-400 font-semibold">
-                        {rating === 1 && 'Poor'}
-                        {rating === 2 && 'Fair'}
-                        {rating === 3 && 'Good'}
-                        {rating === 4 && 'Very Good'}
-                        {rating === 5 && 'Excellent!'}
+                        {rating === 1 && "Poor"}
+                        {rating === 2 && "Fair"}
+                        {rating === 3 && "Good"}
+                        {rating === 4 && "Very Good"}
+                        {rating === 5 && "Excellent!"}
                       </p>
                     )}
                   </div>
@@ -700,9 +812,18 @@ const CoachDetailPage = ({ params }: { params: Promise<Params> }) => {
 
                   {/* Quick Tags */}
                   <div>
-                    <p className="text-sm font-semibold mb-3">What did you like? (Optional)</p>
+                    <p className="text-sm font-semibold mb-3">
+                      What did you like? (Optional)
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                      {['Professional', 'Motivating', 'Knowledgeable', 'Punctual', 'Friendly', 'Results-Oriented'].map((tag) => (
+                      {[
+                        "Professional",
+                        "Motivating",
+                        "Knowledgeable",
+                        "Punctual",
+                        "Friendly",
+                        "Results-Oriented",
+                      ].map((tag) => (
                         <button
                           key={tag}
                           className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-sm hover:bg-yellow-500/20 hover:border-yellow-500 transition-colors"
