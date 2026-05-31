@@ -13,34 +13,26 @@ exports.protect = async (req, res, next) => {
       // Get token from header
       token = req.headers.authorization.split(" ")[1];
 
-      console.log("Verifying JWT token...");
-
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("Token decoded:", decoded);
 
       // Get user from token
       req.user = await User.findById(decoded.id).select("-password");
 
       if (!req.user) {
-        console.log("User not found in database for ID:", decoded.id);
         return res.status(401).json({
           success: false,
           message: "Not authorized, user not found",
         });
       }
-
-      console.log("User authenticated:", req.user.email, "-", req.user.role);
       next();
     } catch (error) {
-      console.error("Token verification failed:", error.message);
       return res.status(401).json({
         success: false,
         message: "Not authorized, token failed",
       });
     }
   } else {
-    console.log("No authorization header or invalid format");
     return res.status(401).json({
       success: false,
       message: "Not authorized, no token",
@@ -85,19 +77,7 @@ exports.optionalAuth = async (req, res, next) => {
 
       // Get user from token
       req.user = await User.findById(decoded.id).select("-password");
-
-      if (req.user) {
-        console.log(
-          "Optional auth: User authenticated:",
-          req.user.email,
-          "-",
-          req.user.role,
-        );
-      }
     } catch (error) {
-      console.log(
-        "Optional auth: Token verification failed, continuing without auth",
-      );
       // Don't fail, just continue without user
     }
   }

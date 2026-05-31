@@ -48,8 +48,16 @@ interface Booking {
   originalDate?: string;
   originalTime?: string;
   rescheduleReason?: string;
-  [key: string]: any; // Allow additional MongoDB fields
+  [key: string]: unknown;
 }
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 const BookingsPage = () => {
   const router = useRouter();
@@ -69,7 +77,6 @@ const BookingsPage = () => {
       const user = userData ? JSON.parse(userData) : null;
 
       if (!user) {
-        console.log("No user found in localStorage - redirecting to login");
         setAuthError(true);
         setIsLoading(false);
         setTimeout(() => router.push("/auth/login"), 2000);
@@ -77,26 +84,21 @@ const BookingsPage = () => {
       }
 
       try {
-        console.log("Fetching bookings for:", user.email);
         setIsLoading(true);
         const apiBookings = await BookingsAPI.getByCustomer(user.email);
-        console.log("Fetched bookings:", apiBookings);
 
-        // Ensure apiBookings is an array
         const bookingsArray = Array.isArray(apiBookings) ? apiBookings : [];
 
-        // Transform API bookings to component format - preserve all MongoDB fields
         const transformedBookings: Booking[] = bookingsArray.map(
-          (booking: any, index) => {
-            // MongoDB returns _id, not id
+          (booking, index) => {
             const bookingId = booking._id || booking.id || String(index);
             return {
-              ...booking, // Preserve all original MongoDB fields
+              ...booking,
               id:
                 typeof bookingId === "string"
                   ? parseInt(bookingId.slice(-8), 16)
                   : bookingId,
-              _id: booking._id, // Ensure MongoDB _id is preserved
+              _id: booking._id,
               coachName: booking.coachName || "Unknown Coach",
               coachImage: (booking.coachName || "UK")
                 .split(" ")
@@ -121,15 +123,13 @@ const BookingsPage = () => {
 
         setAllBookings(transformedBookings);
         setAuthError(false);
-      } catch (error: any) {
-        console.error("Failed to load bookings:", error);
+      } catch (error) {
+        const errorMessage = getErrorMessage(error, "Failed to load bookings");
 
-        // Check if it's an auth error
         if (
-          error.message?.includes("Not authorized") ||
-          error.message?.includes("token")
+          errorMessage.includes("Not authorized") ||
+          errorMessage.includes("token")
         ) {
-          console.log("Authentication error - redirecting to login");
           setAuthError(true);
           setTimeout(() => router.push("/auth/login"), 2000);
         }
@@ -141,13 +141,11 @@ const BookingsPage = () => {
     };
 
     loadBookings();
-    // Poll for updates every 10 seconds
     const interval = setInterval(loadBookings, 10000);
     return () => clearInterval(interval);
   }, [router]);
 
   const filteredBookings = allBookings.filter((booking) => {
-    // Rescheduled bookings should appear in 'upcoming' tab
     if (activeTab === "upcoming") {
       return (
         booking.status === "upcoming" ||
@@ -165,12 +163,6 @@ const BookingsPage = () => {
       day: "numeric",
       year: "numeric",
     });
-  };
-
-  const isUpcoming = (dateString: string) => {
-    const bookingDate = new Date(dateString);
-    const today = new Date();
-    return bookingDate >= today;
   };
 
   const getDaysUntil = (dateString: string) => {
@@ -192,22 +184,15 @@ const BookingsPage = () => {
 
   const confirmCancellation = async () => {
     if (!selectedBooking || !selectedBooking._id) {
-      console.error("No booking selected or missing _id");
       setShowCancelModal(false);
       return;
     }
 
     try {
-      console.log("Cancelling booking:", selectedBooking._id);
-
-      // Update booking status in API using MongoDB _id
-      const updatedBooking = await BookingsAPI.update(selectedBooking._id, {
+      await BookingsAPI.update(selectedBooking._id, {
         status: "cancelled",
       });
 
-      console.log("Booking cancelled:", updatedBooking);
-
-      // Update local state
       setAllBookings(
         allBookings.map((booking) =>
           booking.id === selectedBooking.id
@@ -219,8 +204,9 @@ const BookingsPage = () => {
       setShowCancelModal(false);
       setSelectedBooking(null);
     } catch (error) {
-      console.error("Failed to cancel booking:", error);
-      alert("Failed to cancel booking. Please try again.");
+      alert(
+        getErrorMessage(error, "Failed to cancel booking. Please try again."),
+      );
       setShowCancelModal(false);
     }
   };
@@ -415,7 +401,7 @@ const BookingsPage = () => {
                                       </p>
                                       {booking.rescheduleReason && (
                                         <p className="text-xs text-gray-400 italic">
-                                          "{booking.rescheduleReason}"
+                                          {booking.rescheduleReason}
                                         </p>
                                       )}
                                     </div>

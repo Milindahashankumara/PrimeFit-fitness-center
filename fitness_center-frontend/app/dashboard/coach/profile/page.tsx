@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthAPI, CoachesAPI } from "@/app/lib/api";
 import {
@@ -45,6 +45,21 @@ interface CoachProfile {
   activeClients?: number;
 }
 
+type CoachProfileValue =
+  | string
+  | number
+  | string[]
+  | { personal: boolean; group: boolean; online: boolean }
+  | undefined;
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const CoachProfilePage = () => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -79,12 +94,7 @@ const CoachProfilePage = () => {
 
   const [editedProfile, setEditedProfile] = useState<CoachProfile>(profile);
 
-  // Load coach profile on mount
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -122,12 +132,15 @@ const CoachProfilePage = () => {
       setProfile(profileData);
       setEditedProfile(profileData);
       setLoading(false);
-    } catch (err: any) {
-      console.error("Failed to load profile:", err);
-      setError(err.message || "Failed to load profile");
+    } catch (error) {
+      setError(getErrorMessage(error, "Failed to load profile"));
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const availableSpecializations = [
     "Strength Training",
@@ -156,7 +169,10 @@ const CoachProfilePage = () => {
     "Arabic",
   ];
 
-  const handleInputChange = (field: keyof CoachProfile, value: any) => {
+  const handleInputChange = (
+    field: keyof CoachProfile,
+    value: CoachProfileValue,
+  ) => {
     setEditedProfile({ ...editedProfile, [field]: value });
   };
 
@@ -258,9 +274,10 @@ const CoachProfilePage = () => {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       setLoading(false);
-    } catch (err: any) {
-      console.error("Failed to save profile:", err);
-      alert("Failed to save profile: " + err.message);
+    } catch (error) {
+      alert(
+        `Failed to save profile: ${getErrorMessage(error, "Unknown error")}`,
+      );
       setLoading(false);
     }
   };

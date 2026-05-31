@@ -17,7 +17,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from 'lucide-react';
 
 interface FeedbackSubmission {
@@ -129,6 +130,32 @@ const AdminFeedbackModerationPage = () => {
     } catch (error) {
       console.error('Failed to update feedback:', error);
       setSuccessMessage('Failed to update feedback. Please try again.');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteFeedback = async (feedback: FeedbackSubmission) => {
+    const shouldDelete = window.confirm(
+      `Delete feedback from ${feedback.customerName}? This cannot be undone.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await FeedbackAPI.delete(feedback.id);
+      setFeedbackList(feedbackList.filter((item) => item.id !== feedback.id));
+      setSuccessMessage('Feedback deleted successfully.');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error('Failed to delete feedback:', error);
+      setSuccessMessage('Failed to delete feedback. Please try again.');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } finally {
@@ -388,24 +415,34 @@ const AdminFeedbackModerationPage = () => {
                   </div>
 
                   {/* Actions */}
-                  {feedback.status === 'pending' && (
-                    <div className="flex lg:flex-col gap-2 lg:min-w-[140px]">
-                      <button
-                        onClick={() => handleAction(feedback, 'approve')}
-                        className="flex-1 lg:flex-none bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-                      >
-                        <ThumbsUp size={18} />
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleAction(feedback, 'reject')}
-                        className="flex-1 lg:flex-none bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-                      >
-                        <ThumbsDown size={18} />
-                        Reject
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex lg:flex-col gap-2 lg:min-w-[140px]">
+                    {feedback.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleAction(feedback, 'approve')}
+                          className="flex-1 lg:flex-none bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                          <ThumbsUp size={18} />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleAction(feedback, 'reject')}
+                          className="flex-1 lg:flex-none bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                          <ThumbsDown size={18} />
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleDeleteFeedback(feedback)}
+                      disabled={isProcessing}
+                      className="flex-1 lg:flex-none bg-white/10 hover:bg-red-500/20 text-red-300 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <Trash2 size={18} />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

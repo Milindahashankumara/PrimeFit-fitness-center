@@ -16,17 +16,6 @@ import {
   ThumbsUp,
 } from "lucide-react";
 
-/**
- * FEEDBACK WORKFLOW:
- * 1. Customer books a session with a coach (status: 'pending')
- * 2. Coach accepts the booking (status: 'accepted')
- * 3. After session is done, coach clicks "Complete Session" button (status: 'completed')
- * 4. Only 'completed' sessions appear here for customer to give feedback
- * 5. Customer rates and writes feedback
- * 6. Feedback goes to admin for review (status: 'pending')
- * 7. Admin approves/rejects feedback
- */
-
 interface CompletedSession {
   id: string;
   coachName: string;
@@ -47,6 +36,54 @@ interface FeedbackSubmission {
   status: "pending" | "approved" | "rejected";
 }
 
+type BookingCoachRef =
+  | string
+  | { _id?: string; id?: string }
+  | null
+  | undefined;
+
+type BookingRecord = {
+  _id?: string;
+  id?: string;
+  coachId?: BookingCoachRef;
+  coachName?: string;
+  sessionType?: string;
+  date: string;
+  duration?: number;
+  status: string;
+};
+
+type FeedbackRecord = {
+  _id?: string;
+  id?: string;
+  sessionId?: string | { _id?: string; id?: string };
+  coachName?: string;
+  rating?: number;
+  feedback?: string;
+  submittedDate?: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+const getCoachId = (coachRef: BookingCoachRef): string => {
+  if (typeof coachRef === "string") {
+    return coachRef;
+  }
+
+  if (coachRef && typeof coachRef === "object") {
+    return coachRef._id || coachRef.id || "";
+  }
+
+  return "";
+};
+
 const CustomerFeedbackPage = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"submit" | "history">("submit");
@@ -66,14 +103,14 @@ const CustomerFeedbackPage = () => {
     [],
   );
 
-  // Load completed sessions and feedback history
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
       const userData = localStorage.getItem("user");
       const user = userData ? JSON.parse(userData) : null;
 
       if (!user) {
-        console.log("No user found");
         setIsLoading(false);
         return;
       }
@@ -81,52 +118,71 @@ const CustomerFeedbackPage = () => {
       try {
         setIsLoading(true);
 
-        // Load all bookings
-        const bookings = await BookingsAPI.getAll();
-        console.log("Loaded bookings:", bookings);
+        const bookings = (await BookingsAPI.getByCustomer(
+          user.email,
+        )) as BookingRecord[];
+        const feedbacks =
+          (await FeedbackAPI.getByCustomer()) as FeedbackRecord[];
 
-        // Load all feedback
-        const feedbacks = await FeedbackAPI.getByCustomer();
-        console.log("Loaded feedback:", feedbacks);
-
-        // Filter for completed sessions (completed status only)
         const completed = bookings
-          .filter((b: any) => b.status === "completed")
-          .map((booking: any) => ({
-            id: booking._id || booking.id,
-            coachName: booking.coachName,
-            sessionType: booking.sessionType,
-            date: booking.date,
-            duration: booking.duration || 60,
-            hasFeedback: feedbacks.some(
-              (f: any) => f.sessionId === (booking._id || booking.id),
-            ),
-          }));
+          .filter((booking) => booking.status === "completed")
+          .map((booking) => {
+            const bookingId = String(booking._id || booking.id || "");
+
+            return {
+              id: bookingId,
+              coachName: booking.coachName || "Coach",
+              sessionType: booking.sessionType || "Training",
+              date: booking.date,
+              duration: booking.duration || 60,
+              hasFeedback: feedbacks.some((feedbackItem) => {
+                const feedbackSessionId = String(
+                  (typeof feedbackItem.sessionId === "object"
+                    ? feedbackItem.sessionId?._id || feedbackItem.sessionId?.id
+                    : feedbackItem.sessionId) || "",
+                );
+                return feedbackSessionId === bookingId;
+              }),
+            };
+          });
+
+        if (!isMounted) return;
 
         setCompletedSessions(completed);
 
-        // Transform feedback to match interface
-        const history = feedbacks.map((f: any) => ({
-          id: f._id || f.id,
-          sessionId: f.sessionId,
-          coachName: f.coachName,
-          rating: f.rating,
-          feedback: f.feedback,
-          submittedDate: f.submittedDate
-            ? new Date(f.submittedDate).toISOString().split("T")[0]
+        const history = feedbacks.map((feedbackItem) => ({
+          id: feedbackItem._id || feedbackItem.id || "",
+          sessionId:
+            typeof feedbackItem.sessionId === "string"
+              ? feedbackItem.sessionId
+              : feedbackItem.sessionId?._id || feedbackItem.sessionId?.id || "",
+          coachName: feedbackItem.coachName || "Coach",
+          rating: feedbackItem.rating || 0,
+          feedback: feedbackItem.feedback || "",
+          submittedDate: feedbackItem.submittedDate
+            ? new Date(feedbackItem.submittedDate).toISOString().split("T")[0]
             : "",
-          status: f.status,
+          status: feedbackItem.status,
         }));
 
         setFeedbackHistory(history);
-      } catch (error) {
-        console.error("Failed to load data:", error);
+      } catch {
+        setSuccessMessage("Unable to load feedback data.");
+        setShowSuccess(true);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadData();
+    const interval = setInterval(loadData, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleSubmitFeedback = async () => {
@@ -137,36 +193,39 @@ const CustomerFeedbackPage = () => {
     const session = completedSessions.find((s) => s.id === selectedSession);
     if (!session) return;
 
-    // Get user data for coach info
     const userData = localStorage.getItem("user");
     const user = userData ? JSON.parse(userData) : null;
 
     try {
       setIsSubmitting(true);
 
-      // Find the booking to get coach ID
-      const bookings = await BookingsAPI.getAll();
+      const bookings = (await BookingsAPI.getByCustomer(
+        user?.email || "",
+      )) as BookingRecord[];
       const booking = bookings.find(
-        (b: any) => (b._id || b.id) === selectedSession,
+        (bookingItem) =>
+          (bookingItem._id || bookingItem.id) === selectedSession,
       );
 
       if (!booking) {
         throw new Error("Booking not found");
       }
 
-      // Submit feedback via API
+      const coachId = getCoachId(booking.coachId);
+
+      if (!coachId) {
+        throw new Error("Coach ID not found for this booking");
+      }
+
       const newFeedback = await FeedbackAPI.create({
         sessionId: selectedSession,
-        coachId: booking.coachId,
+        coachId,
         coachName: session.coachName,
         rating,
         feedback: feedback.trim(),
         status: "pending",
       });
 
-      console.log("Feedback submitted:", newFeedback);
-
-      // Add to local state
       const feedbackItem: FeedbackSubmission = {
         id: newFeedback._id || newFeedback.id || Date.now().toString(),
         sessionId: selectedSession,
@@ -179,14 +238,12 @@ const CustomerFeedbackPage = () => {
 
       setFeedbackHistory([feedbackItem, ...feedbackHistory]);
 
-      // Update session to mark as having feedback
       setCompletedSessions(
         completedSessions.map((s) =>
           s.id === selectedSession ? { ...s, hasFeedback: true } : s,
         ),
       );
 
-      // Reset form
       setSelectedSession(null);
       setRating(0);
       setFeedback("");
@@ -195,9 +252,10 @@ const CustomerFeedbackPage = () => {
       );
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
-    } catch (error: any) {
-      console.error("Failed to submit feedback:", error);
-      setSuccessMessage("Failed to submit feedback. Please try again.");
+    } catch (error) {
+      setSuccessMessage(
+        getErrorMessage(error, "Failed to submit feedback. Please try again."),
+      );
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
     } finally {
@@ -340,8 +398,9 @@ const CustomerFeedbackPage = () => {
                     No Sessions Available
                   </h3>
                   <p className="text-gray-400">
-                    You've already provided feedback for all completed sessions.
-                    Book more sessions to share additional feedback!
+                    Completed sessions will appear here automatically after your
+                    coach marks them as finished. Refresh the page or wait a
+                    moment if a session was completed recently.
                   </p>
                 </div>
               ) : (

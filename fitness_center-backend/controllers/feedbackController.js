@@ -46,6 +46,28 @@ exports.getAllFeedback = async (req, res) => {
   }
 };
 
+// @desc    Get approved testimonials for the public homepage
+// @route   GET /api/feedback/testimonials
+// @access  Public
+exports.getApprovedTestimonials = async (req, res) => {
+  try {
+    const testimonials = await Feedback.find({ status: 'approved' })
+      .select('customerName rating feedback submittedDate coachName')
+      .sort({ submittedDate: -1, createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: testimonials.length,
+      data: testimonials
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // @desc    Get single feedback
 // @route   GET /api/feedback/:id
 // @access  Private

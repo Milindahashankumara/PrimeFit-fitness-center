@@ -79,10 +79,6 @@ exports.getComplaint = async (req, res) => {
 // @access  Private (Customer)
 exports.createComplaint = async (req, res) => {
   try {
-    console.log("Creating new complaint...");
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
-    console.log("User:", req.user);
-
     const { subject, category, description, priority } = req.body;
 
     const complaintData = {
@@ -96,24 +92,13 @@ exports.createComplaint = async (req, res) => {
       status: "pending",
     };
 
-    console.log(
-      "Saving complaint to MongoDB:",
-      JSON.stringify(complaintData, null, 2),
-    );
-
     const complaint = await Complaint.create(complaintData);
-
-    console.log("Complaint saved to MongoDB successfully!");
-    console.log("Complaint ID:", complaint._id);
-    console.log("Saved complaint:", JSON.stringify(complaint, null, 2));
 
     res.status(201).json({
       success: true,
       data: complaint,
     });
   } catch (error) {
-    console.error("Error creating complaint:", error.message);
-    console.error("Stack:", error.stack);
     res.status(400).json({
       success: false,
       message: error.message,

@@ -106,10 +106,6 @@ exports.getBooking = async (req, res) => {
 // @access  Private (Customer)
 exports.createBooking = async (req, res) => {
   try {
-    console.log("Creating new booking...");
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
-    console.log("User:", req.user);
-
     const {
       coachId,
       coachName,
@@ -144,24 +140,13 @@ exports.createBooking = async (req, res) => {
       status: "pending",
     };
 
-    console.log(
-      "Saving booking to MongoDB:",
-      JSON.stringify(bookingData, null, 2),
-    );
-
     const booking = await Booking.create(bookingData);
-
-    console.log("Booking saved to MongoDB successfully!");
-    console.log("Booking ID:", booking._id);
-    console.log("Saved booking:", JSON.stringify(booking, null, 2));
 
     res.status(201).json({
       success: true,
       data: booking,
     });
   } catch (error) {
-    console.error("Error creating booking:", error.message);
-    console.error("Stack:", error.stack);
     res.status(400).json({
       success: false,
       message: error.message,

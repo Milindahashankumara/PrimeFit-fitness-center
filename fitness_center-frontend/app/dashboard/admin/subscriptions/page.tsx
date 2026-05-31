@@ -21,6 +21,14 @@ import {
   SubscriptionSummary,
 } from "@/app/lib/api";
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const AdminSubscriptionsPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -49,8 +57,10 @@ const AdminSubscriptionsPage = () => {
         const data = await SubscriptionAPI.getAdminOverview();
         setOverview(data);
         setSelectedCustomer(data?.customers?.[0] || null);
-      } catch (loadError: any) {
-        setError(loadError.message || "Failed to load subscription overview");
+      } catch (loadError) {
+        setError(
+          getErrorMessage(loadError, "Failed to load subscription overview"),
+        );
       } finally {
         setLoading(false);
       }
@@ -88,8 +98,8 @@ const AdminSubscriptionsPage = () => {
       });
       setMessage("Bill marked as paid successfully.");
       await refreshOverview();
-    } catch (markError: any) {
-      setError(markError.message || "Failed to update bill status");
+    } catch (markError) {
+      setError(getErrorMessage(markError, "Failed to update bill status"));
     } finally {
       setSaving(false);
     }
@@ -106,8 +116,8 @@ const AdminSubscriptionsPage = () => {
       await SubscriptionAPI.updateStatus(subscriptionId, { status });
       setMessage(`Subscription updated to ${status}.`);
       await refreshOverview();
-    } catch (statusError: any) {
-      setError(statusError.message || "Failed to update subscription");
+    } catch (statusError) {
+      setError(getErrorMessage(statusError, "Failed to update subscription"));
     } finally {
       setSaving(false);
     }

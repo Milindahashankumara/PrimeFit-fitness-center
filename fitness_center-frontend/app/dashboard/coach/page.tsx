@@ -1,24 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Announcement,
   AnnouncementsAPI,
   AuthAPI,
+  Booking,
   BookingsAPI,
   FeedbackAPI,
 } from "@/app/lib/api";
 import {
   Users,
   Calendar,
-  MessageSquare,
   DollarSign,
   LogOut,
-  TrendingUp,
   Clock,
   Star,
-  Video,
   Settings,
   ClipboardList,
   AlertCircle,
@@ -73,7 +71,7 @@ const CoachDashboard = () => {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
@@ -86,20 +84,7 @@ const CoachDashboard = () => {
     ratingCount: 0,
   });
 
-  useEffect(() => {
-    loadUserData();
-    loadAnnouncements();
-  }, [router]);
-
-  useEffect(() => {
-    if (!user?._id && !user?.id) {
-      return;
-    }
-
-    loadCoachPerformanceData(user._id || user.id || "");
-  }, [user]);
-
-  const loadCoachPerformanceData = async (coachId: string) => {
+  const loadCoachPerformanceData = useCallback(async (coachId: string) => {
     try {
       setLoadingBookings(true);
 
@@ -210,16 +195,14 @@ const CoachDashboard = () => {
         averageRating: averageRating || fallbackAverageRating,
         ratingCount: approvedRatings.length,
       });
-    } catch (error) {
-      console.error("Failed to load coach dashboard data:", error);
+    } catch {
       setTodayBookings([]);
     }
     setLoadingBookings(false);
-  };
+  }, [user?.activeClients, user?.rating]);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
-      // First check localStorage
       const userData = localStorage.getItem("user");
       if (!userData) {
         router.push("/auth/login");
@@ -232,28 +215,24 @@ const CoachDashboard = () => {
         return;
       }
 
-      // Load fresh data from API
       const currentUser = await AuthAPI.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
-        // Update localStorage with fresh data
         localStorage.setItem("user", JSON.stringify(currentUser));
       } else {
         setUser(parsedUser);
       }
       setLoading(false);
-    } catch (error) {
-      console.error("Failed to load user data:", error);
-      // Fallback to localStorage data
+    } catch {
       const userData = localStorage.getItem("user");
       if (userData) {
         setUser(JSON.parse(userData));
       }
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  const loadAnnouncements = async () => {
+  const loadAnnouncements = useCallback(async () => {
     try {
       setAnnouncementsLoading(true);
       const data = await AnnouncementsAPI.getAll({
@@ -261,12 +240,24 @@ const CoachDashboard = () => {
         status: "published",
       });
       setAnnouncements(data);
-    } catch (error) {
-      console.error("Failed to load announcements:", error);
     } finally {
       setAnnouncementsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUserData();
+    loadAnnouncements();
+  }, [loadAnnouncements, loadUserData]);
+
+  useEffect(() => {
+    if (!user?._id && !user?.id) {
+      return;
+    }
+
+    loadCoachPerformanceData(user._id || user.id || "");
+  }, [user]);
+
 
   const handleLogout = () => {
     localStorage.removeItem("user");
