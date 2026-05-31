@@ -31,15 +31,13 @@ const LoginPage = () => {
     setError("");
 
     try {
-      // Call real backend API
-      console.log("Logging in:", formData.email);
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: formData.email,
+          email: formData.email.trim().toLowerCase(),
           password: formData.password,
         }),
       });
@@ -47,10 +45,9 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        setError(data.message || "Login failed");
+        return;
       }
-
-      console.log("Login successful!", data);
 
       // Store token and user data
       localStorage.setItem("token", data.token);
@@ -70,9 +67,8 @@ const LoginPage = () => {
         default:
           router.push("/");
       }
-    } catch (err: any) {
-      console.error("Login error:", err);
-      setError(err.message || "Login failed. Please try again.");
+    } catch {
+      setError("Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -129,10 +125,7 @@ const LoginPage = () => {
 
           {error && (
             <div className="mb-6 bg-red-500/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle
-                className="text-red-500 flex-shrink-0 mt-0.5"
-                size={20}
-              />
+              <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
               <p className="text-sm text-red-200">{error}</p>
             </div>
           )}
@@ -201,11 +194,9 @@ const LoginPage = () => {
             </button>
 
             <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-white/20"></div>
-              <span className="flex-shrink-0 mx-4 text-gray-300 text-sm">
-                Or
-              </span>
-              <div className="flex-grow border-t border-white/20"></div>
+              <div className="grow border-t border-white/20"></div>
+              <span className="shrink-0 mx-4 text-gray-300 text-sm">Or</span>
+              <div className="grow border-t border-white/20"></div>
             </div>
 
             <button

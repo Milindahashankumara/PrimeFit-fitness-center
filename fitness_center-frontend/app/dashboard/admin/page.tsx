@@ -197,7 +197,7 @@ const AdminDashboard = () => {
               <Clock className="text-yellow-500" size={24} />
               <div>
                 <p className="font-semibold text-yellow-400">
-                  3 coach applications awaiting review
+                  Coach applications awaiting review
                 </p>
                 <p className="text-sm text-yellow-400/80">
                   Review and approve new coach registrations
@@ -351,49 +351,11 @@ const AdminDashboard = () => {
                 <ArrowRight size={16} />
               </div>
             </Link>
-
-            <div className="group bg-brand-gray rounded-2xl p-6 border border-white/10 hover:border-brand-red/50 transition-all hover:scale-105 cursor-pointer">
-              <div className="w-14 h-14 bg-linear-to-br from-gray-500 to-slate-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Settings className="text-white" size={28} />
-              </div>
-              <h3 className="text-lg font-bold mb-2">System Settings</h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Configure preferences
-              </p>
-              <div className="flex items-center gap-2 text-brand-red font-semibold text-sm group-hover:gap-3 transition-all">
-                <span>Manage Settings</span>
-                <ArrowRight size={16} />
-              </div>
-            </div>
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* Traditional Quick Actions */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Shield className="text-brand-red" />
-              Quick Actions
-            </h2>
-            <div className="space-y-3">
-              <button className="w-full bg-brand-red hover:bg-red-700 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                <Users size={18} />
-                Add New Member
-              </button>
-              <button className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                <UserCheck size={18} />
-                Add New Coach
-              </button>
-              <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                <Calendar size={18} />
-                Manage Schedule
-              </button>
-              <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2">
-                <FileText size={18} />
-                Generate Report
-              </button>
-            </div>
-          </div>
 
           {/* Recent Activity */}
           <div className="bg-brand-gray p-6 rounded-xl md:col-span-2">
@@ -401,216 +363,153 @@ const AdminDashboard = () => {
               <Activity className="text-brand-red" />
               Recent Activity
             </h2>
-            <div className="space-y-3">
-              <div className="bg-black/40 p-4 rounded-lg flex items-start gap-3">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shrink-0">
-                  <Users size={18} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">New Member Registration</h3>
-                  <p className="text-sm text-gray-400">
-                    Jessica Martinez joined Premium Plan
-                  </p>
-                  <span className="text-xs text-gray-500">5 minutes ago</span>
-                </div>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg flex items-start gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shrink-0">
-                  <DollarSign size={18} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">Payment Received</h3>
-                  <p className="text-sm text-gray-400">
-                    LKR 299 from John Smith - Annual Membership
-                  </p>
-                  <span className="text-xs text-gray-500">15 minutes ago</span>
-                </div>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg flex items-start gap-3">
-                <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center shrink-0">
-                  <UserCheck size={18} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">Coach Application</h3>
-                  <p className="text-sm text-gray-400">
-                    New coach application from Mike Johnson
-                  </p>
-                  <span className="text-xs text-gray-500">1 hour ago</span>
-                </div>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg flex items-start gap-3">
-                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center shrink-0">
-                  <Calendar size={18} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">Class Scheduled</h3>
-                  <p className="text-sm text-gray-400">
-                    Yoga class added for Wednesday 6:00 PM
-                  </p>
-                  <span className="text-xs text-gray-500">2 hours ago</span>
-                </div>
-              </div>
-            </div>
+            <RecentActivity />
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Membership Overview */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <BarChart className="text-brand-red" />
-              Membership Overview
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Premium Members</span>
-                  <span className="text-sm font-semibold">542 (43%)</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-brand-red h-3 rounded-full"
-                    style={{ width: "43%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Standard Members</span>
-                  <span className="text-sm font-semibold">485 (39%)</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-blue-500 h-3 rounded-full"
-                    style={{ width: "39%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Basic Members</span>
-                  <span className="text-sm font-semibold">220 (18%)</span>
-                </div>
-                <div className="w-full bg-black/40 rounded-full h-3">
-                  <div
-                    className="bg-green-500 h-3 rounded-full"
-                    style={{ width: "18%" }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="bg-black/40 p-4 rounded-lg mt-6">
-                <h3 className="font-semibold mb-2">Membership Trends</h3>
-                <p className="text-sm text-gray-400 mb-3">
-                  +187 new members this month
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-green-500/20 rounded p-2">
-                    <p className="text-xs text-gray-400">New</p>
-                    <p className="font-bold text-green-400">187</p>
-                  </div>
-                  <div className="bg-yellow-500/20 rounded p-2">
-                    <p className="text-xs text-gray-400">Renewed</p>
-                    <p className="font-bold text-yellow-400">124</p>
-                  </div>
-                  <div className="bg-red-500/20 rounded p-2">
-                    <p className="text-xs text-gray-400">Expired</p>
-                    <p className="font-bold text-red-400">42</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* System Alerts */}
-          <div className="bg-brand-gray p-6 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <AlertCircle className="text-brand-red" />
-              System Alerts
-            </h2>
-            <div className="space-y-3">
-              <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-red-500 shrink-0" size={20} />
-                  <div>
-                    <h3 className="font-semibold text-red-400">
-                      Equipment Maintenance
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      5 machines require immediate maintenance
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-yellow-500/20 border border-yellow-500/50 p-4 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-yellow-500 shrink-0" size={20} />
-                  <div>
-                    <h3 className="font-semibold text-yellow-400">
-                      Expiring Memberships
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      48 memberships expiring this week
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-500/20 border border-blue-500/50 p-4 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-blue-500 shrink-0" size={20} />
-                  <div>
-                    <h3 className="font-semibold text-blue-400">
-                      Staff Schedule
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      3 coaching slots need to be filled next week
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-500/20 border border-green-500/50 p-4 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Activity className="text-green-500 shrink-0" size={20} />
-                  <div>
-                    <h3 className="font-semibold text-green-400">
-                      System Health
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      All systems operational
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 bg-black/40 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Revenue Target</h3>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-400">Monthly Goal</span>
-                <span className="text-sm font-semibold">
-                  LKR 84.5K / LKR 100K
-                </span>
-              </div>
-              <div className="w-full bg-black/40 rounded-full h-3">
-                <div
-                  className="bg-linear-to-r from-brand-red to-yellow-500 h-3 rounded-full"
-                  style={{ width: "84.5%" }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div className="grid md:grid-cols-2 gap-8"></div>
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
+
+function RecentActivity() {
+  const activities = [
+    {
+      id: 1,
+      title: "Coach applications awaiting review",
+      desc: "Review and approve new coach registrations",
+      time: "Just now",
+      icon: Users,
+      color: "green",
+      isNew: true,
+      href: "/dashboard/admin/coaches",
+    },
+    {
+      id: 2,
+      title: "New customer complaints require attention",
+      desc: "Review and respond to customer feedback",
+      time: "A few minutes ago",
+      icon: AlertCircle,
+      color: "red",
+      isNew: false,
+      href: "/dashboard/admin/complaints",
+    },
+    {
+      id: 3,
+      title: "Payment Received",
+      desc: "Admin account successfully logged in",
+      time: "A few minutes ago",
+      icon: DollarSign,
+      color: "blue",
+      isNew: false,
+      href: "/dashboard/admin/payments",
+    },
+  ];
+
+  const [showPopup, setShowPopup] = useState(false);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem("adminPopupDismissed");
+    const hasNew = activities.some((a) => a.isNew);
+    if (hasNew && dismissed !== "true") setShowPopup(true);
+  }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem("adminPopupDismissed", "true");
+    setShowPopup(false);
+  };
+
+  return (
+    <>
+      {showPopup && (
+        <div className="fixed top-6 right-6 z-50 w-96 bg-yellow-500/95 text-black rounded-lg shadow-lg border border-yellow-600">
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="font-semibold">Recent Updates</p>
+                <p className="text-sm text-black/80">
+                  You have new items that need attention
+                </p>
+              </div>
+              <button
+                onClick={handleDismiss}
+                className="text-black/70 hover:opacity-80"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-3 space-y-3">
+              {activities
+                .filter((a) => a.isNew || a.id <= 2)
+                .map((a) => {
+                  const Icon = a.icon as any;
+                  return (
+                    <div
+                      key={a.id}
+                      className="bg-white/10 p-3 rounded-lg flex items-start gap-3"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                          a.color === "green"
+                            ? "bg-green-500"
+                            : a.color === "red"
+                              ? "bg-red-500"
+                              : "bg-blue-500"
+                        }`}
+                      >
+                        <Icon size={16} className="text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold">{a.title}</p>
+                        <p className="text-sm text-black/70">{a.desc}</p>
+                        <div className="mt-2">
+                          <Link
+                            href={a.href}
+                            className="text-sm font-semibold underline"
+                          >
+                            Review Now
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {activities.map((a) => {
+          const Icon = a.icon as any;
+          const colorClass =
+            a.color === "green"
+              ? "bg-green-500"
+              : a.color === "red"
+                ? "bg-red-500"
+                : "bg-blue-500";
+          return (
+            <div
+              key={a.id}
+              className="bg-black/40 p-4 rounded-lg flex items-start gap-3"
+            >
+              <div
+                className={`w-10 h-10 ${colorClass} rounded-full flex items-center justify-center shrink-0`}
+              >
+                <Icon size={18} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">{a.title}</h3>
+                <p className="text-sm text-gray-400">{a.desc}</p>
+                <span className="text-xs text-gray-500">{a.time}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}

@@ -92,6 +92,8 @@ exports.login = async (req, res) => {
     console.log("Email:", req.body.email, "Role:", req.body.role);
 
     const { email, password, role } = req.body;
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : email;
 
     // Validate email & password
     if (!email || !password) {
@@ -103,7 +105,9 @@ exports.login = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+password",
+    );
 
     if (!user) {
       console.log("User not found:", email);

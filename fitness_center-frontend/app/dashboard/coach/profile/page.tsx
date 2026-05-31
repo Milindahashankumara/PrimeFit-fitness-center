@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { AuthAPI, CoachesAPI } from '@/app/lib/api';
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  Phone, 
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AuthAPI, CoachesAPI } from "@/app/lib/api";
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
   Award,
   Edit,
   Save,
@@ -20,8 +20,8 @@ import {
   Target,
   Shield,
   Star,
-  TrendingUp
-} from 'lucide-react';
+  TrendingUp,
+} from "lucide-react";
 
 interface CoachProfile {
   _id?: string;
@@ -51,30 +51,30 @@ const CoachProfilePage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newCertification, setNewCertification] = useState('');
-  const [newAchievement, setNewAchievement] = useState('');
+  const [newCertification, setNewCertification] = useState("");
+  const [newAchievement, setNewAchievement] = useState("");
   const [showCertModal, setShowCertModal] = useState(false);
   const [showAchievementModal, setShowAchievementModal] = useState(false);
 
   const [profile, setProfile] = useState<CoachProfile>({
-    name: '',
-    email: '',
-    phone: '',
-    bio: '',
+    name: "",
+    email: "",
+    phone: "",
+    bio: "",
     specializations: [],
     certifications: [],
     experience: 0,
     hourlyRate: 0,
     achievements: [],
-    languages: ['English'],
+    languages: ["English"],
     sessionTypes: {
       personal: true,
       group: false,
-      online: false
+      online: false,
     },
     rating: 0,
     reviewCount: 0,
-    activeClients: 0
+    activeClients: 0,
   });
 
   const [editedProfile, setEditedProfile] = useState<CoachProfile>(profile);
@@ -88,56 +88,72 @@ const CoachProfilePage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Get current user data
       const currentUser = await AuthAPI.getCurrentUser();
-      if (!currentUser || currentUser.role !== 'coach') {
-        router.push('/auth/login');
+      if (!currentUser || currentUser.role !== "coach") {
+        router.push("/auth/login");
         return;
       }
 
       // Set profile from user data
       const profileData: CoachProfile = {
         _id: currentUser._id,
-        name: currentUser.name || '',
-        email: currentUser.email || '',
-        phone: currentUser.phone || '',
-        bio: currentUser.bio || '',
+        name: currentUser.name || "",
+        email: currentUser.email || "",
+        phone: currentUser.phone || "",
+        bio: currentUser.bio || "",
         specializations: currentUser.specializations || [],
         certifications: currentUser.certifications || [],
         experience: currentUser.experience || 0,
         hourlyRate: currentUser.hourlyRate || 0,
         achievements: currentUser.achievements || [],
-        languages: currentUser.languages || ['English'],
+        languages: currentUser.languages || ["English"],
         sessionTypes: currentUser.sessionTypes || {
           personal: true,
           group: false,
-          online: false
+          online: false,
         },
         rating: currentUser.rating || 0,
         reviewCount: currentUser.reviewCount || 0,
-        activeClients: currentUser.activeClients || 0
+        activeClients: currentUser.activeClients || 0,
       };
 
       setProfile(profileData);
       setEditedProfile(profileData);
       setLoading(false);
     } catch (err: any) {
-      console.error('Failed to load profile:', err);
-      setError(err.message || 'Failed to load profile');
+      console.error("Failed to load profile:", err);
+      setError(err.message || "Failed to load profile");
       setLoading(false);
     }
   };
 
   const availableSpecializations = [
-    'Strength Training', 'HIIT', 'Cardio', 'Yoga', 'Pilates', 
-    'CrossFit', 'Boxing', 'Nutrition Coaching', 'Weight Loss', 
-    'Muscle Building', 'Flexibility', 'Sports Performance'
+    "Strength Training",
+    "HIIT",
+    "Cardio",
+    "Yoga",
+    "Pilates",
+    "CrossFit",
+    "Boxing",
+    "Nutrition Coaching",
+    "Weight Loss",
+    "Muscle Building",
+    "Flexibility",
+    "Sports Performance",
   ];
 
   const availableLanguages = [
-    'English', 'Spanish', 'French', 'German', 'Chinese', 
-    'Japanese', 'Portuguese', 'Italian', 'Arabic'
+    "English",
+    "Spanish",
+    "French",
+    "German",
+    "Chinese",
+    "Japanese",
+    "Portuguese",
+    "Italian",
+    "Arabic",
   ];
 
   const handleInputChange = (field: keyof CoachProfile, value: any) => {
@@ -147,62 +163,78 @@ const CoachProfilePage = () => {
   const handleSpecializationToggle = (spec: string) => {
     const currentSpecs = editedProfile.specializations || [];
     const specializations = currentSpecs.includes(spec)
-      ? currentSpecs.filter(s => s !== spec)
+      ? currentSpecs.filter((s) => s !== spec)
       : [...currentSpecs, spec];
-    handleInputChange('specializations', specializations);
+    handleInputChange("specializations", specializations);
   };
 
   const handleLanguageToggle = (lang: string) => {
     const currentLangs = editedProfile.languages || [];
     const languages = currentLangs.includes(lang)
-      ? currentLangs.filter(l => l !== lang)
+      ? currentLangs.filter((l) => l !== lang)
       : [...currentLangs, lang];
-    handleInputChange('languages', languages);
+    handleInputChange("languages", languages);
   };
 
-  const handleSessionTypeToggle = (type: 'personal' | 'group' | 'online') => {
-    const currentTypes = editedProfile.sessionTypes || { personal: false, group: false, online: false };
-    handleInputChange('sessionTypes', {
+  const handleSessionTypeToggle = (type: "personal" | "group" | "online") => {
+    const currentTypes = editedProfile.sessionTypes || {
+      personal: false,
+      group: false,
+      online: false,
+    };
+    handleInputChange("sessionTypes", {
       ...currentTypes,
-      [type]: !currentTypes[type]
+      [type]: !currentTypes[type],
     });
   };
 
   const handleAddCertification = () => {
     if (newCertification.trim()) {
       const currentCerts = editedProfile.certifications || [];
-      handleInputChange('certifications', [...currentCerts, newCertification.trim()]);
-      setNewCertification('');
+      handleInputChange("certifications", [
+        ...currentCerts,
+        newCertification.trim(),
+      ]);
+      setNewCertification("");
       setShowCertModal(false);
     }
   };
 
   const handleRemoveCertification = (cert: string) => {
-    handleInputChange('certifications', editedProfile.certifications?.filter(c => c !== cert) || []);
+    handleInputChange(
+      "certifications",
+      editedProfile.certifications?.filter((c) => c !== cert) || [],
+    );
   };
 
   const handleAddAchievement = () => {
     if (newAchievement.trim()) {
       const currentAchievements = editedProfile.achievements || [];
-      handleInputChange('achievements', [...currentAchievements, newAchievement.trim()]);
-      setNewAchievement('');
+      handleInputChange("achievements", [
+        ...currentAchievements,
+        newAchievement.trim(),
+      ]);
+      setNewAchievement("");
       setShowAchievementModal(false);
     }
   };
 
   const handleRemoveAchievement = (achievement: string) => {
-    handleInputChange('achievements', editedProfile.achievements?.filter(a => a !== achievement) || []);
+    handleInputChange(
+      "achievements",
+      editedProfile.achievements?.filter((a) => a !== achievement) || [],
+    );
   };
 
   const handleSave = async () => {
     try {
       if (!profile._id) {
-        alert('Profile ID not found');
+        alert("Profile ID not found");
         return;
       }
 
       setLoading(true);
-      
+
       // Update coach profile via API
       const updates = {
         name: editedProfile.name,
@@ -214,21 +246,21 @@ const CoachProfilePage = () => {
         hourlyRate: editedProfile.hourlyRate,
         achievements: editedProfile.achievements,
         languages: editedProfile.languages,
-        sessionTypes: editedProfile.sessionTypes
+        sessionTypes: editedProfile.sessionTypes,
       };
 
       await CoachesAPI.update(profile._id, updates);
-      
+
       // Reload profile to get updated data
       await loadProfile();
-      
+
       setIsEditing(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       setLoading(false);
     } catch (err: any) {
-      console.error('Failed to save profile:', err);
-      alert('Failed to save profile: ' + err.message);
+      console.error("Failed to save profile:", err);
+      alert("Failed to save profile: " + err.message);
       setLoading(false);
     }
   };
@@ -263,12 +295,17 @@ const CoachProfilePage = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={() => router.back()} className="hover:text-brand-red transition-colors">
+              <button
+                onClick={() => router.back()}
+                className="hover:text-brand-red transition-colors"
+              >
                 <ArrowLeft size={24} />
               </button>
               <div>
                 <h1 className="text-2xl font-bold">Coach Profile</h1>
-                <p className="text-sm text-gray-400">Manage your professional profile</p>
+                <p className="text-sm text-gray-400">
+                  Manage your professional profile
+                </p>
               </div>
             </div>
             {!isEditing && (
@@ -289,7 +326,9 @@ const CoachProfilePage = () => {
         {showSuccess && (
           <div className="mb-6 bg-green-500/20 border border-green-500 rounded-xl p-4 flex items-center gap-3 animate-pulse">
             <CheckCircle className="text-green-500" size={24} />
-            <p className="font-semibold text-green-400">Profile updated successfully!</p>
+            <p className="font-semibold text-green-400">
+              Profile updated successfully!
+            </p>
           </div>
         )}
 
@@ -300,7 +339,10 @@ const CoachProfilePage = () => {
               {/* Avatar */}
               <div className="relative mb-6">
                 <div className="w-32 h-32 bg-brand-red rounded-full flex items-center justify-center text-4xl font-bold mx-auto">
-                  {profile.name.split(' ').map(n => n[0]).join('')}
+                  {profile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
                 </div>
                 {isEditing && (
                   <button className="absolute bottom-0 right-1/2 translate-x-16 bg-white text-brand-dark p-2 rounded-full hover:bg-gray-200 transition-colors">
@@ -312,7 +354,7 @@ const CoachProfilePage = () => {
               <div className="text-center mb-6">
                 <h3 className="font-bold text-2xl mb-1">{profile.name}</h3>
                 <p className="text-sm text-gray-400 mb-3">{profile.email}</p>
-                
+
                 <div className="flex items-center justify-center gap-2 mb-4">
                   <Star className="text-yellow-400 fill-yellow-400" size={20} />
                   <span className="text-xl font-bold">4.9</span>
@@ -322,10 +364,14 @@ const CoachProfilePage = () => {
                 <div className="bg-black/40 p-4 rounded-lg">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <DollarSign className="text-brand-red" size={20} />
-                    <span className="text-2xl font-bold text-brand-red">LKR {profile.hourlyRate}</span>
+                    <span className="text-2xl font-bold text-brand-red">
+                      LKR {profile.hourlyRate}
+                    </span>
                     <span className="text-gray-400">/hour</span>
                   </div>
-                  <p className="text-xs text-gray-400">{profile.experience} years experience</p>
+                  <p className="text-xs text-gray-400">
+                    {profile.experience} years experience
+                  </p>
                 </div>
               </div>
 
@@ -352,7 +398,9 @@ const CoachProfilePage = () => {
             {/* Edit Mode Actions */}
             {isEditing && (
               <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-4 flex items-center justify-between">
-                <p className="text-blue-400 font-semibold">You are in edit mode</p>
+                <p className="text-blue-400 font-semibold">
+                  You are in edit mode
+                </p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCancel}
@@ -381,46 +429,67 @@ const CoachProfilePage = () => {
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Full Name</label>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Full Name
+                    </label>
                     <input
                       type="text"
                       value={isEditing ? editedProfile.name : profile.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
                       disabled={!isEditing}
                       className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Email Address</label>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       value={isEditing ? editedProfile.email : profile.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
                       disabled={!isEditing}
                       className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Phone Number</label>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Phone Number
+                    </label>
                     <input
                       type="tel"
                       value={isEditing ? editedProfile.phone : profile.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
                       disabled={!isEditing}
                       className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Years of Experience</label>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Years of Experience
+                    </label>
                     <input
                       type="number"
-                      value={isEditing ? (editedProfile.experience ?? '') : (profile.experience ?? '')}
+                      value={
+                        isEditing
+                          ? (editedProfile.experience ?? "")
+                          : (profile.experience ?? "")
+                      }
                       onChange={(e) => {
                         const v = e.target.value;
-                        handleInputChange('experience', v === '' ? '' : parseInt(v, 10));
+                        handleInputChange(
+                          "experience",
+                          v === "" ? "" : parseInt(v, 10),
+                        );
                       }}
                       disabled={!isEditing}
                       min="0"
@@ -429,15 +498,27 @@ const CoachProfilePage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-2">Hourly Rate (LKR)</label>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Hourly Rate (LKR)
+                    </label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 text-gray-400" size={20} />
+                      <DollarSign
+                        className="absolute left-3 top-3 text-gray-400"
+                        size={20}
+                      />
                       <input
                         type="number"
-                        value={isEditing ? (editedProfile.hourlyRate ?? '') : (profile.hourlyRate ?? '')}
+                        value={
+                          isEditing
+                            ? (editedProfile.hourlyRate ?? "")
+                            : (profile.hourlyRate ?? "")
+                        }
                         onChange={(e) => {
                           const v = e.target.value;
-                          handleInputChange('hourlyRate', v === '' ? '' : parseInt(v, 10));
+                          handleInputChange(
+                            "hourlyRate",
+                            v === "" ? "" : parseInt(v, 10),
+                          );
                         }}
                         disabled={!isEditing}
                         min="0"
@@ -448,17 +529,23 @@ const CoachProfilePage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Professional Bio</label>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    Professional Bio
+                  </label>
                   <textarea
                     value={isEditing ? editedProfile.bio : profile.bio}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
+                    onChange={(e) => handleInputChange("bio", e.target.value)}
                     disabled={!isEditing}
                     rows={5}
                     placeholder="Tell clients about your experience, approach, and what makes you unique..."
                     className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white disabled:opacity-60 focus:border-brand-red focus:outline-none resize-none"
                   />
                   <p className="text-xs text-gray-400 mt-2">
-                    {((isEditing ? editedProfile.bio : profile.bio) || '').length} / 500 characters
+                    {
+                      ((isEditing ? editedProfile.bio : profile.bio) || "")
+                        .length
+                    }{" "}
+                    / 500 characters
                   </p>
                 </div>
               </div>
@@ -474,12 +561,17 @@ const CoachProfilePage = () => {
                 {availableSpecializations.map((spec) => (
                   <button
                     key={spec}
-                    onClick={() => isEditing && handleSpecializationToggle(spec)}
+                    onClick={() =>
+                      isEditing && handleSpecializationToggle(spec)
+                    }
                     disabled={!isEditing}
                     className={`px-4 py-2 rounded-lg transition-colors ${
-                      (isEditing ? editedProfile.specializations : profile.specializations)?.includes(spec)
-                        ? 'bg-brand-red text-white'
-                        : 'bg-black/40 border border-white/10 hover:border-brand-red'
+                      (isEditing
+                        ? editedProfile.specializations
+                        : profile.specializations
+                      )?.includes(spec)
+                        ? "bg-brand-red text-white"
+                        : "bg-black/40 border border-white/10 hover:border-brand-red"
                     } disabled:cursor-default`}
                   >
                     {spec}
@@ -506,8 +598,14 @@ const CoachProfilePage = () => {
                 )}
               </div>
               <div className="space-y-2">
-                {(isEditing ? editedProfile.certifications : profile.certifications)?.map((cert) => (
-                  <div key={cert} className="flex items-center justify-between bg-black/40 p-3 rounded-lg">
+                {(isEditing
+                  ? editedProfile.certifications
+                  : profile.certifications
+                )?.map((cert) => (
+                  <div
+                    key={cert}
+                    className="flex items-center justify-between bg-black/40 p-3 rounded-lg"
+                  >
                     <div className="flex items-center gap-2">
                       <CheckCircle className="text-green-500" size={16} />
                       <span>{cert}</span>
@@ -543,11 +641,20 @@ const CoachProfilePage = () => {
                 )}
               </div>
               <div className="grid md:grid-cols-2 gap-3">
-                {(isEditing ? editedProfile.achievements : profile.achievements)?.map((achievement) => (
-                  <div key={achievement} className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red">
+                {(isEditing
+                  ? editedProfile.achievements
+                  : profile.achievements
+                )?.map((achievement) => (
+                  <div
+                    key={achievement}
+                    className="bg-black/40 p-4 rounded-lg border-l-4 border-brand-red"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1">
-                        <TrendingUp className="text-brand-red shrink-0 mt-1" size={20} />
+                        <TrendingUp
+                          className="text-brand-red shrink-0 mt-1"
+                          size={20}
+                        />
                         <span className="text-sm">{achievement}</span>
                       </div>
                       {isEditing && (
@@ -574,9 +681,12 @@ const CoachProfilePage = () => {
                     onClick={() => isEditing && handleLanguageToggle(lang)}
                     disabled={!isEditing}
                     className={`px-4 py-2 rounded-lg transition-colors ${
-                      (isEditing ? editedProfile.languages : profile.languages)?.includes(lang)
-                        ? 'bg-brand-red text-white'
-                        : 'bg-black/40 border border-white/10 hover:border-brand-red'
+                      (isEditing
+                        ? editedProfile.languages
+                        : profile.languages
+                      )?.includes(lang)
+                        ? "bg-brand-red text-white"
+                        : "bg-black/40 border border-white/10 hover:border-brand-red"
                     } disabled:cursor-default`}
                   >
                     {lang}
@@ -598,19 +708,27 @@ const CoachProfilePage = () => {
                     <p className="text-sm text-gray-400">One-on-one sessions</p>
                   </div>
                   <button
-                    onClick={() => isEditing && handleSessionTypeToggle('personal')}
+                    onClick={() =>
+                      isEditing && handleSessionTypeToggle("personal")
+                    }
                     disabled={!isEditing}
                     className={`relative w-14 h-7 rounded-full transition-colors ${
-                      (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.personal
-                        ? 'bg-brand-red'
-                        : 'bg-gray-600'
+                      (isEditing
+                        ? editedProfile.sessionTypes
+                        : profile.sessionTypes
+                      )?.personal
+                        ? "bg-brand-red"
+                        : "bg-gray-600"
                     } disabled:cursor-default`}
                   >
                     <div
                       className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                        (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.personal
-                          ? 'translate-x-7'
-                          : ''
+                        (isEditing
+                          ? editedProfile.sessionTypes
+                          : profile.sessionTypes
+                        )?.personal
+                          ? "translate-x-7"
+                          : ""
                       }`}
                     />
                   </button>
@@ -619,22 +737,32 @@ const CoachProfilePage = () => {
                 <div className="flex items-center justify-between p-4 bg-black/40 rounded-lg">
                   <div>
                     <p className="font-semibold">Group Sessions</p>
-                    <p className="text-sm text-gray-400">Small group training</p>
+                    <p className="text-sm text-gray-400">
+                      Small group training
+                    </p>
                   </div>
                   <button
-                    onClick={() => isEditing && handleSessionTypeToggle('group')}
+                    onClick={() =>
+                      isEditing && handleSessionTypeToggle("group")
+                    }
                     disabled={!isEditing}
                     className={`relative w-14 h-7 rounded-full transition-colors ${
-                      (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.group
-                        ? 'bg-brand-red'
-                        : 'bg-gray-600'
+                      (isEditing
+                        ? editedProfile.sessionTypes
+                        : profile.sessionTypes
+                      )?.group
+                        ? "bg-brand-red"
+                        : "bg-gray-600"
                     } disabled:cursor-default`}
                   >
                     <div
                       className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                        (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.group
-                          ? 'translate-x-7'
-                          : ''
+                        (isEditing
+                          ? editedProfile.sessionTypes
+                          : profile.sessionTypes
+                        )?.group
+                          ? "translate-x-7"
+                          : ""
                       }`}
                     />
                   </button>
@@ -643,22 +771,32 @@ const CoachProfilePage = () => {
                 <div className="flex items-center justify-between p-4 bg-black/40 rounded-lg">
                   <div>
                     <p className="font-semibold">Online Sessions</p>
-                    <p className="text-sm text-gray-400">Virtual training via video</p>
+                    <p className="text-sm text-gray-400">
+                      Virtual training via video
+                    </p>
                   </div>
                   <button
-                    onClick={() => isEditing && handleSessionTypeToggle('online')}
+                    onClick={() =>
+                      isEditing && handleSessionTypeToggle("online")
+                    }
                     disabled={!isEditing}
                     className={`relative w-14 h-7 rounded-full transition-colors ${
-                      (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.online
-                        ? 'bg-brand-red'
-                        : 'bg-gray-600'
+                      (isEditing
+                        ? editedProfile.sessionTypes
+                        : profile.sessionTypes
+                      )?.online
+                        ? "bg-brand-red"
+                        : "bg-gray-600"
                     } disabled:cursor-default`}
                   >
                     <div
                       className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                        (isEditing ? editedProfile.sessionTypes : profile.sessionTypes)?.online
-                          ? 'translate-x-7'
-                          : ''
+                        (isEditing
+                          ? editedProfile.sessionTypes
+                          : profile.sessionTypes
+                        )?.online
+                          ? "translate-x-7"
+                          : ""
                       }`}
                     />
                   </button>
@@ -680,13 +818,13 @@ const CoachProfilePage = () => {
               onChange={(e) => setNewCertification(e.target.value)}
               placeholder="e.g., ACE Personal Trainer Certification"
               className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none mb-4"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddCertification()}
+              onKeyPress={(e) => e.key === "Enter" && handleAddCertification()}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowCertModal(false);
-                  setNewCertification('');
+                  setNewCertification("");
                 }}
                 className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors"
               >
@@ -715,13 +853,13 @@ const CoachProfilePage = () => {
               onChange={(e) => setNewAchievement(e.target.value)}
               placeholder="e.g., Top Trainer of the Year 2025"
               className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none mb-4"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddAchievement()}
+              onKeyPress={(e) => e.key === "Enter" && handleAddAchievement()}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowAchievementModal(false);
-                  setNewAchievement('');
+                  setNewAchievement("");
                 }}
                 className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors"
               >
