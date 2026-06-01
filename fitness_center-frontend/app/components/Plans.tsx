@@ -124,7 +124,6 @@ const Plans = () => {
           Select the plan that suits your fitness goals.
         </p>
 
-        {/* Toggle Switch */}
         <div className="flex justify-center mb-12">
           <div className="bg-brand-gray p-1 rounded-full flex">
             <button

@@ -118,7 +118,6 @@ const Testimonials = () => {
 
         <div className="relative bg-linear-to-r from-brand-red/10 to-transparent p-1 rounded-2xl border border-brand-red/20">
           <div className="grid md:grid-cols-2 items-center">
-            {/* Left Image */}
             <div className="hidden md:block relative h-[500px]">
               <Image
                 src="/feedback1.png"
@@ -128,7 +127,6 @@ const Testimonials = () => {
               />
             </div>
 
-            {/* Right Content */}
             <div className="p-8 md:p-12 relative">
               <div className="bg-[#800000] p-8 rounded-xl relative shadow-2xl min-h-[400px] flex flex-col">
                 <Quote className="absolute top-4 right-4 text-white/20 w-12 h-12" />
@@ -151,7 +149,6 @@ const Testimonials = () => {
                       </p>
                     )}
 
-                    {/* Star Rating */}
                     <div className="flex items-center gap-1 mb-6">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
@@ -179,7 +176,6 @@ const Testimonials = () => {
                   </div>
                 )}
 
-                {/* Navigation Buttons */}
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/20">
                   <div className="flex gap-2">
                     {testimonials.map((_, idx) => (
