@@ -17,9 +17,7 @@ const getFileSize = (sizeInBytes) => {
   return `${kb.toFixed(1)} KB`;
 };
 
-// @desc    Get all resources
-// @route   GET /api/resources
-// @access  Public
+// Get all resources
 exports.getResources = async (req, res) => {
   try {
     let query = { status: "published" };
@@ -68,9 +66,7 @@ exports.getResources = async (req, res) => {
   }
 };
 
-// @desc    Get single resource
-// @route   GET /api/resources/:id
-// @access  Public
+// Get single resource
 exports.getResource = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id).populate(
@@ -101,9 +97,7 @@ exports.getResource = async (req, res) => {
   }
 };
 
-// @desc    Create resource
-// @route   POST /api/resources
-// @access  Private (Admin)
+// Create resource
 exports.createResource = async (req, res) => {
   try {
     const {
@@ -197,9 +191,7 @@ exports.createResource = async (req, res) => {
   }
 };
 
-// @desc    Update resource
-// @route   PUT /api/resources/:id
-// @access  Private (Admin)
+// Update resource
 exports.updateResource = async (req, res) => {
   try {
     let resource = await Resource.findById(req.params.id);
@@ -291,9 +283,7 @@ exports.updateResource = async (req, res) => {
   }
 };
 
-// @desc    Delete resource
-// @route   DELETE /api/resources/:id
-// @access  Private (Admin)
+// Delete resource
 exports.deleteResource = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -319,9 +309,7 @@ exports.deleteResource = async (req, res) => {
   }
 };
 
-// @desc    Increment download count
-// @route   PUT /api/resources/:id/download
-// @access  Public
+// Increment download count
 exports.incrementDownload = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);

@@ -1,6 +1,6 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
-import Image from 'next/image';
+import React from "react";
+import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 const trainers = [
   { name: "Sam Sam", role: "Personal Trainer", image: "/trainer1.png" },
@@ -15,32 +15,41 @@ const Coaches = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="text-4xl font-bold">Meet Our <span className="text-brand-red">Trainers</span></h2>
-            <p className="text-gray-400 mt-2">See a few of the many positive reviews of our customers.</p>
+            <h2 className="text-4xl font-bold">
+              Meet Our <span className="text-brand-red">Trainers</span>
+            </h2>
+            <p className="text-gray-400 mt-2">
+              See a few of the many positive reviews of our customers.
+            </p>
           </div>
-          {/* Slider Arrows (Visual Only) */}
+
           <div className="flex gap-2">
-            <button className="p-2 border border-white/20 rounded hover:border-brand-red hover:text-brand-red transition-colors">←</button>
-            <button className="p-2 border border-white/20 rounded hover:border-brand-red hover:text-brand-red transition-colors">→</button>
+            <button className="p-2 border border-white/20 rounded hover:border-brand-red hover:text-brand-red transition-colors">
+              ←
+            </button>
+            <button className="p-2 border border-white/20 rounded hover:border-brand-red hover:text-brand-red transition-colors">
+              →
+            </button>
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {trainers.map((trainer, idx) => (
-            <div key={idx} className="group relative rounded-xl overflow-hidden bg-brand-gray border border-white/5 hover:border-brand-red/50 transition-all">
-              {/* Image Container */}
+            <div
+              key={idx}
+              className="group relative rounded-xl overflow-hidden bg-brand-gray border border-white/5 hover:border-brand-red/50 transition-all"
+            >
               <div className="h-80 overflow-hidden relative">
-                <Image 
-                  src={trainer.image} 
-                  alt={trainer.name} 
+                <Image
+                  src={trainer.image}
+                  alt={trainer.name}
                   fill
-                  className="object-cover group-hover:scale-110 transition-transform duration-500" 
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
                 />
-                {/* Gradient Overlay */}
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90"></div>
               </div>
-              
-              {/* Content */}
+
               <div className="absolute bottom-0 left-0 w-full p-6">
                 <h3 className="text-xl font-bold mb-1">{trainer.name}</h3>
                 <p className="text-gray-400 text-sm mb-4">{trainer.role}</p>

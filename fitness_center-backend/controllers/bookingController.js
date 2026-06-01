@@ -1,9 +1,7 @@
 const Booking = require("../models/Booking");
 const User = require("../models/User");
 
-// @desc    Get all bookings (with filters)
-// @route   GET /api/bookings
-// @access  Private
+// Get all bookings (with filters)
 exports.getBookings = async (req, res) => {
   try {
     let query = {};
@@ -29,7 +27,7 @@ exports.getBookings = async (req, res) => {
     }
 
     // If user is customer, only show their bookings
-    // Support both old format (email) and new format (ObjectId)
+
     if (req.user.role === "customer") {
       query.$or = [
         { customerId: req.user.id }, // New format: ObjectId
@@ -61,9 +59,7 @@ exports.getBookings = async (req, res) => {
   }
 };
 
-// @desc    Get single booking
-// @route   GET /api/bookings/:id
-// @access  Private
+// Get single booking
 exports.getBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
@@ -101,9 +97,7 @@ exports.getBooking = async (req, res) => {
   }
 };
 
-// @desc    Create new booking
-// @route   POST /api/bookings
-// @access  Private (Customer)
+// Create new booking
 exports.createBooking = async (req, res) => {
   try {
     const {
@@ -154,9 +148,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// @desc    Update booking
-// @route   PUT /api/bookings/:id
-// @access  Private
+// Update booking
 exports.updateBooking = async (req, res) => {
   try {
     let booking = await Booking.findById(req.params.id);
@@ -221,9 +213,7 @@ exports.updateBooking = async (req, res) => {
   }
 };
 
-// @desc    Delete booking
-// @route   DELETE /api/bookings/:id
-// @access  Private
+// Delete booking
 exports.deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);

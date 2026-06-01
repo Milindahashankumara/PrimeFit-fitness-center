@@ -1,8 +1,6 @@
 const Complaint = require("../models/Complaint");
 
-// @desc    Get all complaints
-// @route   GET /api/complaints
-// @access  Private
+// Get all complaints
 exports.getComplaints = async (req, res) => {
   try {
     let query = {};
@@ -37,9 +35,7 @@ exports.getComplaints = async (req, res) => {
   }
 };
 
-// @desc    Get single complaint
-// @route   GET /api/complaints/:id
-// @access  Private
+// Get single complaint
 exports.getComplaint = async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
@@ -74,9 +70,7 @@ exports.getComplaint = async (req, res) => {
   }
 };
 
-// @desc    Create new complaint
-// @route   POST /api/complaints
-// @access  Private (Customer)
+// Create new complaint
 exports.createComplaint = async (req, res) => {
   try {
     const { subject, category, description, priority } = req.body;
@@ -106,9 +100,7 @@ exports.createComplaint = async (req, res) => {
   }
 };
 
-// @desc    Update complaint (Admin only)
-// @route   PUT /api/complaints/:id
-// @access  Private (Admin)
+// Update complaint (Admin only)
 exports.updateComplaint = async (req, res) => {
   try {
     let complaint = await Complaint.findById(req.params.id);
@@ -149,9 +141,7 @@ exports.updateComplaint = async (req, res) => {
   }
 };
 
-// @desc    Delete complaint
-// @route   DELETE /api/complaints/:id
-// @access  Private (Admin or Owner)
+// Delete complaint
 exports.deleteComplaint = async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
