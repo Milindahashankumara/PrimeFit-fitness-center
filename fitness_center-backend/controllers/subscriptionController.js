@@ -209,10 +209,19 @@ exports.getAdminOverview = async (req, res) => {
     const bookingsThisMonth = await Booking.countDocuments({
       createdAt: { $gte: monthStart, $lt: nextMonth },
     });
-    const paidBillsThisMonth = await Bill.find({
-      status: "paid",
-      paidAt: { $gte: monthStart, $lt: nextMonth },
-    }).lean();
+    const monthlyRevenueSummary = await Bill.aggregate([
+      {
+        $match: {
+          status: "paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
 
     const activeSubscriptions = subscriptions.filter(
       (subscription) => subscription.status === "active",
@@ -240,10 +249,7 @@ exports.getAdminOverview = async (req, res) => {
           annualSubscribers: activeSubscriptions.filter(
             (subscription) => subscription.billingCycle === "annually",
           ).length,
-          monthlyRevenue: paidBillsThisMonth.reduce(
-            (sum, bill) => sum + (bill.amount || 0),
-            0,
-          ),
+          monthlyRevenue: monthlyRevenueSummary[0]?.total ?? 0,
           sessionsThisMonth: bookingsThisMonth,
         },
         customers: customerSummaries,
