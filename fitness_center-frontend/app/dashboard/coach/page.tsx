@@ -20,6 +20,7 @@ import {
   Settings,
   ClipboardList,
   AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -400,6 +401,18 @@ const CoachDashboard = () => {
             />
             <h3 className="text-xl font-bold mb-1">My Clients</h3>
             <p className="text-white/80 text-sm">View and manage clients</p>
+          </Link>
+
+          <Link
+            href="/dashboard/coach/communication"
+            className="bg-linear-to-br from-cyan-600 to-blue-700 p-6 rounded-xl hover:shadow-xl hover:shadow-cyan-500/20 transition-all group"
+          >
+            <MessageSquare
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
+            <h3 className="text-xl font-bold mb-1">Communication Center</h3>
+            <p className="text-white/80 text-sm">Chat with clients and admins</p>
           </Link>
         </div>
 

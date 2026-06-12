@@ -51,7 +51,12 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled', 'rescheduled'],
+    enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled', 'rescheduled', 'pending_reschedule'],
+    default: 'pending'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'refunded'],
     default: 'pending'
   },
   message: {
@@ -81,6 +86,24 @@ const bookingSchema = new mongoose.Schema({
   },
   rescheduledAt: {
     type: Date
+  },
+  // Reschedule request fields (pending approval)
+  rescheduleRequest: {
+    requestedDate: String,
+    requestedTime: String,
+    requestReason: String,
+    requestedAt: Date,
+    requestedBy: {
+      type: String,
+      enum: ['customer', 'coach']
+    }
+  },
+  // Cancellation fields
+  cancellationReason: String,
+  cancelledAt: Date,
+  cancelledBy: {
+    type: String,
+    enum: ['customer', 'coach', 'admin']
   }
 }, {
   timestamps: true
