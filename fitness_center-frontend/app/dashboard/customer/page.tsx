@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Search,
   MessageSquare,
+  Mail,
   Star,
   Settings,
   ShieldCheck,
@@ -326,6 +327,20 @@ const CustomerDashboardContent = () => {
           </Link>
 
           <Link
+            href="/dashboard/customer/messages"
+            className="bg-linear-to-br from-cyan-600 to-blue-700 p-6 rounded-xl hover:shadow-xl hover:shadow-cyan-500/20 transition-all group"
+          >
+            <Mail
+              className="text-white mb-3 group-hover:scale-110 transition-transform"
+              size={32}
+            />
+            <h3 className="text-xl font-bold mb-1">Messages & Emails</h3>
+            <p className="text-white/80 text-sm">
+              Inbox, sent items, and coach/admin communication
+            </p>
+          </Link>
+
+          <Link
             href="/dashboard/customer/complaints"
             className="bg-linear-to-br from-orange-600 to-orange-800 p-6 rounded-xl hover:shadow-xl hover:shadow-orange-500/20 transition-all group"
           >
@@ -464,9 +479,12 @@ const CustomerDashboardContent = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="flex-1 bg-brand-red hover:bg-red-700 py-2 rounded-lg font-semibold transition-colors text-sm">
+                  <Link
+                    href="/dashboard/customer/messages"
+                    className="flex-1 bg-brand-red hover:bg-red-700 py-2 rounded-lg font-semibold transition-colors text-center text-sm"
+                  >
                     Message
-                  </button>
+                  </Link>
                   <Link
                     href="/dashboard/customer/coaches/1"
                     className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors text-center text-sm"

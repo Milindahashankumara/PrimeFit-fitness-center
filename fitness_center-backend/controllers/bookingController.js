@@ -162,6 +162,7 @@ exports.updateBooking = async (req, res) => {
 
     // Prepare update object
     let updateData = {};
+    let unsetFields = {};
 
     // Check authorization - coach can update status, customer can cancel
     if (req.user.role === "coach") {
@@ -171,10 +172,14 @@ exports.updateBooking = async (req, res) => {
           message: "Not authorized to update this booking",
         });
       }
-      // Coach can update status
-      if (req.body.status) {
-        updateData.status = req.body.status;
-      }
+      // Coach can update all fields sent in the request
+      Object.keys(req.body).forEach(key => {
+        if (req.body[key] === null) {
+          unsetFields[key] = "";
+        } else {
+          updateData[key] = req.body[key];
+        }
+      });
     } else if (req.user.role === "customer") {
       if (booking.customerId.toString() !== req.user.id) {
         return res.status(403).json({
@@ -182,9 +187,21 @@ exports.updateBooking = async (req, res) => {
           message: "Not authorized to update this booking",
         });
       }
-      // Customer can only cancel
+      // Customer can only update specific fields
       if (req.body.status === "cancelled") {
         updateData.status = "cancelled";
+        updateData.cancelledAt = new Date();
+        updateData.cancelledBy = "customer";
+        if (req.body.cancellationReason) {
+          updateData.cancellationReason = req.body.cancellationReason;
+        }
+      } else if (req.body.status === "pending_reschedule" && req.body.rescheduleRequest) {
+        // Customer requesting reschedule - needs coach approval
+        updateData.status = "pending_reschedule";
+        updateData.rescheduleRequest = req.body.rescheduleRequest;
+      } else {
+        // Customer trying to update other fields - not allowed
+        updateData = {};
       }
     } else if (req.user.role === "admin") {
       // Admin can update anything
@@ -192,9 +209,14 @@ exports.updateBooking = async (req, res) => {
     }
 
     // Use findByIdAndUpdate to avoid full document validation
+    const updateQuery = { $set: updateData };
+    if (Object.keys(unsetFields).length > 0) {
+      updateQuery.$unset = unsetFields;
+    }
+
     const updatedBooking = await Booking.findByIdAndUpdate(
       req.params.id,
-      { $set: updateData },
+      updateQuery,
       {
         new: true,
         runValidators: false, // Skip validation for partial updates

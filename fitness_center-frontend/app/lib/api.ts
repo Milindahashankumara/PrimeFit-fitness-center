@@ -535,6 +535,66 @@ export interface SubscriptionOverview {
   bills: SubscriptionBill[];
 }
 
+export interface CommunicationRecipient {
+  _id: string;
+  name: string;
+  email: string;
+  role: "customer" | "coach" | "admin";
+  coachStatus?: "pending" | "approved" | "rejected";
+}
+
+export interface CommunicationAttachment {
+  fileName?: string;
+  fileUrl?: string;
+  mimeType?: string;
+  size?: number;
+}
+
+export interface CommunicationMessage {
+  _id: string;
+  id?: string;
+  thread: string | CommunicationThread;
+  sender: string | CommunicationRecipient;
+  receiver: string | CommunicationRecipient;
+  subject: string;
+  content: string;
+  attachments?: CommunicationAttachment[];
+  readAt?: string;
+  readBy?: string;
+  deliveryStatus?: "pending" | "sent" | "failed";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationThread {
+  _id: string;
+  id?: string;
+  subject: string;
+  participants: CommunicationRecipient[];
+  lastMessage?: CommunicationMessage;
+  lastMessageAt?: string;
+  messageCount?: number;
+  unreadCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommunicationNotification {
+  _id: string;
+  id?: string;
+  user: string | CommunicationRecipient;
+  type: "message" | "announcement" | "system";
+  title: string;
+  body: string;
+  relatedMessage?: string | CommunicationMessage;
+  relatedThread?: string | CommunicationThread;
+  actionUrl?: string;
+  read: boolean;
+  readAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Feedback API
 export const FeedbackAPI = {
   // Get approved testimonials for the public homepage
@@ -740,6 +800,192 @@ export const SubscriptionAPI = {
       console.error("Failed to update subscription status:", error);
       throw error;
     }
+  },
+};
+
+export const MessagesAPI = {
+  getRecipients: async (): Promise<CommunicationRecipient[]> => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/messages/recipients`);
+      return response.data || [];
+    } catch (error) {
+      console.error("Failed to fetch message recipients:", error);
+      return [];
+    }
+  },
+
+  getThreads: async (filters?: {
+    folder?: "inbox" | "sent" | "all";
+    search?: string;
+  }): Promise<CommunicationThread[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.folder) params.append("folder", filters.folder);
+      if (filters?.search) params.append("search", filters.search);
+
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/messages/threads${params.toString() ? `?${params.toString()}` : ""}`,
+      );
+      return response.data || [];
+    } catch (error) {
+      console.error("Failed to fetch threads:", error);
+      return [];
+    }
+  },
+
+  getInbox: async (search?: string): Promise<CommunicationThread[]> => {
+    return MessagesAPI.getThreads({ folder: "inbox", search });
+  },
+
+  getSent: async (search?: string): Promise<CommunicationThread[]> => {
+    return MessagesAPI.getThreads({ folder: "sent", search });
+  },
+
+  getThread: async (
+    threadId: string,
+  ): Promise<{ thread: CommunicationThread; messages: CommunicationMessage[] } | null> => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/messages/thread/${threadId}`,
+      );
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to fetch conversation:", error);
+      return null;
+    }
+  },
+
+  getMessage: async (messageId: string): Promise<CommunicationMessage | null> => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/messages/${messageId}`);
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to fetch message:", error);
+      return null;
+    }
+  },
+
+  send: async (payload: {
+    receiverId: string;
+    subject: string;
+    content: string;
+    threadId?: string;
+    attachments?: File[];
+  }): Promise<{ message: CommunicationMessage; thread: CommunicationThread }> => {
+    const formData = new FormData();
+    formData.append("receiverId", payload.receiverId);
+    formData.append("subject", payload.subject);
+    formData.append("content", payload.content);
+
+    if (payload.threadId) {
+      formData.append("threadId", payload.threadId);
+    }
+
+    payload.attachments?.forEach((file) => {
+      formData.append("attachments", file);
+    });
+
+    const response = await fetchWithAuth(`${API_BASE_URL}/messages`, {
+      method: "POST",
+      body: formData,
+    });
+
+    return response.data;
+  },
+
+  broadcast: async (payload: {
+    audience: "all" | "customers" | "coaches";
+    subject: string;
+    content: string;
+    attachments?: File[];
+  }): Promise<{ sentCount: number }> => {
+    const formData = new FormData();
+    formData.append("audience", payload.audience);
+    formData.append("subject", payload.subject);
+    formData.append("content", payload.content);
+
+    payload.attachments?.forEach((file) => {
+      formData.append("attachments", file);
+    });
+
+    const response = await fetchWithAuth(`${API_BASE_URL}/messages/broadcast`, {
+      method: "POST",
+      body: formData,
+    });
+
+    return response.data;
+  },
+
+  markRead: async (messageId: string): Promise<CommunicationMessage> => {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/messages/${messageId}/read`,
+      {
+        method: "PUT",
+      },
+    );
+    return response.data;
+  },
+
+  getUnreadCount: async (): Promise<{
+    unreadMessages: number;
+    unreadNotifications: number;
+    total: number;
+  }> => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/messages/unread-count`);
+      return response.data || { unreadMessages: 0, unreadNotifications: 0, total: 0 };
+    } catch (error) {
+      console.error("Failed to fetch unread counts:", error);
+      return { unreadMessages: 0, unreadNotifications: 0, total: 0 };
+    }
+  },
+};
+
+export const NotificationsAPI = {
+  getAll: async (filters?: {
+    read?: boolean;
+    type?: "message" | "announcement" | "system";
+    search?: string;
+  }): Promise<CommunicationNotification[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (typeof filters?.read === "boolean") {
+        params.append("read", String(filters.read));
+      }
+      if (filters?.type) params.append("type", filters.type);
+      if (filters?.search) params.append("search", filters.search);
+
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/notifications${params.toString() ? `?${params.toString()}` : ""}`,
+      );
+      return response.data || [];
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      return [];
+    }
+  },
+
+  getUnreadCount: async (): Promise<number> => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/notifications/unread-count`);
+      return response.data?.unreadCount || 0;
+    } catch (error) {
+      console.error("Failed to fetch notification count:", error);
+      return 0;
+    }
+  },
+
+  markRead: async (id: string): Promise<CommunicationNotification> => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/notifications/${id}/read`, {
+      method: "PUT",
+    });
+    return response.data;
+  },
+
+  markAllRead: async (): Promise<void> => {
+    await fetchWithAuth(`${API_BASE_URL}/notifications/read-all`, {
+      method: "PUT",
+    });
   },
 };
 

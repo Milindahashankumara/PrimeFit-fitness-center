@@ -32,6 +32,8 @@ app.use("/api/feedback", require("./routes/feedbackRoutes"));
 app.use("/api/coaches", require("./routes/coachRoutes"));
 app.use("/api/announcements", require("./routes/announcementRoutes"));
 app.use("/api/resources", require("./routes/resourceRoutes"));
+app.use("/api/messages", require("./routes/messageRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 
 app.get("/", (_req, res) => {
   res.json({

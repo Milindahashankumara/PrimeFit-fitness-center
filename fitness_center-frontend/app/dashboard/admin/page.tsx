@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Star,
   CircleDollarSign,
+  Mail,
 } from "lucide-react";
 import Link from "next/link";
 import { SubscriptionAPI, SubscriptionOverview } from "@/app/lib/api";
@@ -314,6 +315,23 @@ const AdminDashboard = () => {
               </p>
               <div className="flex items-center gap-2 text-brand-red font-semibold text-sm group-hover:gap-3 transition-all">
                 <span>Manage Announcements</span>
+                <ArrowRight size={16} />
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/admin/communications"
+              className="group bg-brand-gray rounded-2xl p-6 border border-white/10 hover:border-brand-red/50 transition-all hover:scale-105"
+            >
+              <div className="w-14 h-14 bg-linear-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Mail className="text-white" size={28} />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Email Management</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                View and send all customer and coach communications
+              </p>
+              <div className="flex items-center gap-2 text-brand-red font-semibold text-sm group-hover:gap-3 transition-all">
+                <span>Open Center</span>
                 <ArrowRight size={16} />
               </div>
             </Link>

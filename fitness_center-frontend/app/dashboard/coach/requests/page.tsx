@@ -28,13 +28,20 @@ interface BookingRequest {
   sessionType: "personal" | "group" | "online";
   duration: number;
   price: number;
-  status: "pending" | "accepted" | "rejected" | "completed" | "rescheduled";
+  status: "pending" | "accepted" | "rejected" | "completed" | "rescheduled" | "pending_reschedule";
   message?: string;
   requestedAt: string;
   rescheduledBy?: string;
   originalDate?: string;
   originalTime?: string;
   rescheduleReason?: string;
+  rescheduleRequest?: {
+    requestedDate: string;
+    requestedTime: string;
+    requestReason?: string;
+    requestedAt?: string;
+    requestedBy?: string;
+  };
 }
 
 const toBookingStatus = (value: string): BookingRequest["status"] => {
@@ -44,6 +51,7 @@ const toBookingStatus = (value: string): BookingRequest["status"] => {
     "rejected",
     "completed",
     "rescheduled",
+    "pending_reschedule",
   ];
 
   if (allowedStatuses.includes(value as BookingRequest["status"])) {
@@ -100,6 +108,11 @@ const BookingRequestsPage = () => {
           status: toBookingStatus(booking.status),
           message: booking.message,
           requestedAt: booking.requestedAt,
+          originalDate: booking.originalDate,
+          originalTime: booking.originalTime,
+          rescheduleReason: booking.rescheduleReason,
+          rescheduledBy: booking.rescheduledBy,
+          rescheduleRequest: booking.rescheduleRequest,
         }));
 
         setBookingRequests(requests);
@@ -203,6 +216,75 @@ const BookingRequestsPage = () => {
     }
   };
 
+  const handleApproveReschedule = async (request: BookingRequest) => {
+    if (!request.rescheduleRequest) return;
+
+    try {
+      await BookingsAPI.update(request._id, {
+        status: "rescheduled",
+        originalDate: request.date,
+        originalTime: request.time,
+        date: request.rescheduleRequest.requestedDate,
+        time: request.rescheduleRequest.requestedTime,
+        rescheduleReason: request.rescheduleRequest.requestReason,
+        rescheduledBy: "customer",
+        rescheduledAt: new Date().toISOString(),
+        rescheduleRequest: null,
+      });
+
+      setBookingRequests(
+        bookingRequests.map((req) =>
+          req._id === request._id
+            ? {
+                ...req,
+                status: "rescheduled",
+                originalDate: req.date,
+                originalTime: req.time,
+                date: request.rescheduleRequest!.requestedDate,
+                time: request.rescheduleRequest!.requestedTime,
+                rescheduleReason: request.rescheduleRequest!.requestReason,
+                rescheduledBy: "customer",
+                rescheduleRequest: undefined,
+              }
+            : req,
+        ),
+      );
+
+      setSuccessMessage("Reschedule request approved! Customer has been notified.");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to approve reschedule:", error);
+      alert("Failed to approve reschedule request");
+    }
+  };
+
+  const handleRejectReschedule = async (request: BookingRequest) => {
+    if (confirm(`Reject reschedule request from ${request.clientName}?`)) {
+      try {
+        await BookingsAPI.update(request._id, {
+          status: "accepted",
+          rescheduleRequest: null,
+        });
+
+        setBookingRequests(
+          bookingRequests.map((req) =>
+            req._id === request._id
+              ? { ...req, status: "accepted", rescheduleRequest: undefined }
+              : req,
+          ),
+        );
+
+        setSuccessMessage("Reschedule request rejected. Booking remains at original time.");
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } catch (error) {
+        console.error("Failed to reject reschedule:", error);
+        alert("Failed to reject reschedule request");
+      }
+    }
+  };
+
   const handleConfirmAction = async () => {
     if (selectedRequest) {
       try {
@@ -240,6 +322,12 @@ const BookingRequestsPage = () => {
 
   const getFilteredRequests = () => {
     if (activeTab === "all") return bookingRequests;
+    if (activeTab === "pending") {
+      return bookingRequests.filter((req) => req.status === "pending" || req.status === "pending_reschedule");
+    }
+    if (activeTab === "accepted") {
+      return bookingRequests.filter((req) => req.status === "accepted" || req.status === "rescheduled");
+    }
     return bookingRequests.filter((req) => req.status === activeTab);
   };
 
@@ -249,12 +337,16 @@ const BookingRequestsPage = () => {
     switch (status) {
       case "pending":
         return "text-yellow-400 bg-yellow-500/20";
+      case "pending_reschedule":
+        return "text-orange-400 bg-orange-500/20";
       case "accepted":
         return "text-green-400 bg-green-500/20";
       case "rejected":
         return "text-red-400 bg-red-500/20";
       case "completed":
         return "text-blue-400 bg-blue-500/20";
+      case "rescheduled":
+        return "text-purple-400 bg-purple-500/20";
       default:
         return "text-gray-400 bg-gray-500/20";
     }
@@ -287,9 +379,9 @@ const BookingRequestsPage = () => {
   };
 
   const getPendingCount = () =>
-    bookingRequests.filter((r) => r.status === "pending").length;
+    bookingRequests.filter((r) => r.status === "pending" || r.status === "pending_reschedule").length;
   const getAcceptedCount = () =>
-    bookingRequests.filter((r) => r.status === "accepted").length;
+    bookingRequests.filter((r) => r.status === "accepted" || r.status === "rescheduled").length;
   const getRejectedCount = () =>
     bookingRequests.filter((r) => r.status === "rejected").length;
   const getCompletedCount = () =>
@@ -481,7 +573,9 @@ const BookingRequestsPage = () => {
                         className={`px-3 py-1 rounded-lg ${getStatusColor(request.status)}`}
                       >
                         <span className="text-sm font-semibold capitalize">
-                          {request.status}
+                          {request.status === "pending_reschedule" 
+                            ? "Pending Reschedule" 
+                            : request.status.replace("_", " ")}
                         </span>
                       </div>
                     </div>
@@ -550,6 +644,62 @@ const BookingRequestsPage = () => {
                       </div>
                     )}
 
+                    {/* Reschedule Request Details */}
+                    {request.status === "pending_reschedule" && request.rescheduleRequest && (
+                      <div className="bg-orange-500/10 border border-orange-500/50 p-4 rounded-lg mb-3">
+                        <p className="text-sm font-semibold text-orange-400 mb-3">
+                          Requested Reschedule
+                        </p>
+                        <div className="space-y-2">
+                          <p className="text-sm">
+                            <span className="text-gray-400">From:</span>{" "}
+                            {new Date(request.date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })} at {request.time}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-400">To:</span>{" "}
+                            <span className="text-green-400 font-semibold">
+                              {new Date(request.rescheduleRequest.requestedDate).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })} at {request.rescheduleRequest.requestedTime}
+                            </span>
+                          </p>
+                          {request.rescheduleRequest.requestReason && (
+                            <p className="text-xs text-gray-300 italic mt-2 pt-2 border-t border-white/10">
+                              Reason: {request.rescheduleRequest.requestReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rescheduled Info */}
+                    {request.status === "rescheduled" && request.originalDate && request.originalTime && (
+                      <div className="bg-blue-500/10 border border-blue-500/50 p-4 rounded-lg mb-3">
+                        <p className="text-sm font-semibold text-blue-400 mb-2">
+                          Rescheduled Session
+                        </p>
+                        <p className="text-xs text-gray-400 mb-1">Original time:</p>
+                        <p className="text-sm font-semibold mb-2">
+                          {new Date(request.originalDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })} at {request.originalTime}
+                        </p>
+                        {request.rescheduleReason && (
+                          <p className="text-xs text-gray-300 italic mt-2 pt-2 border-t border-white/10">
+                            Reason: {request.rescheduleReason}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Request Time */}
                     <p className="text-xs text-gray-400">
                       Requested{" "}
@@ -589,7 +739,7 @@ const BookingRequestsPage = () => {
                     </div>
                   )}
 
-                  {request.status === "accepted" && (
+                  {(request.status === "accepted" || request.status === "rescheduled") && (
                     <div className="flex flex-col gap-2 lg:min-w-[140px]">
                       <button
                         onClick={() => handleCompleteSession(request)}
@@ -608,21 +758,22 @@ const BookingRequestsPage = () => {
                     </div>
                   )}
 
-                  {request.status === "rescheduled" && (
-                    <div className="flex flex-col gap-2 lg:min-w-[200px]">
-                      <div className="bg-blue-500/20 border border-blue-500/50 px-4 py-3 rounded-lg">
-                        <p className="text-xs text-blue-400 mb-1">
-                          Rescheduled From:
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {request.originalDate} at {request.originalTime}
-                        </p>
-                        {request.rescheduleReason && (
-                          <p className="text-xs text-gray-400 mt-2">
-                            {request.rescheduleReason}
-                          </p>
-                        )}
-                      </div>
+                  {request.status === "pending_reschedule" && request.rescheduleRequest && (
+                    <div className="flex flex-col gap-2 lg:min-w-[180px]">
+                      <button
+                        onClick={() => handleApproveReschedule(request)}
+                        className="bg-green-500 hover:bg-green-600 px-4 py-2.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Check size={18} />
+                        Approve Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleRejectReschedule(request)}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <X size={18} />
+                        Reject Request
+                      </button>
                     </div>
                   )}
                 </div>
