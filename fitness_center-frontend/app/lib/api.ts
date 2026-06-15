@@ -70,7 +70,8 @@ export interface Booking {
     | "rejected"
     | "completed"
     | "cancelled"
-    | "rescheduled";
+    | "rescheduled"
+    | "pending_reschedule";
   message?: string;
   requestedAt: string;
   sessionType: string;
@@ -80,6 +81,13 @@ export interface Booking {
   originalTime?: string;
   rescheduleReason?: string;
   rescheduledAt?: string;
+  rescheduleRequest?: {
+    requestedDate: string;
+    requestedTime: string;
+    requestReason?: string;
+    requestedAt?: string;
+    requestedBy?: string;
+  };
 }
 
 export interface Complaint {
@@ -205,7 +213,13 @@ export const BookingsAPI = {
   },
 
   // Update a booking
-  update: async (id: string, updates: Partial<Booking>): Promise<Booking> => {
+  update: async (
+    id: string,
+    updates: Partial<Omit<Booking, "rescheduleRequest">> & {
+      rescheduleRequest?: Booking["rescheduleRequest"] | null;
+      rescheduledAt?: string;
+    },
+  ): Promise<Booking> => {
     try {
       console.log("Updating booking:", id, updates);
       const response = await fetchWithAuth(`${API_BASE_URL}/bookings/${id}`, {
@@ -806,7 +820,9 @@ export const SubscriptionAPI = {
 export const MessagesAPI = {
   getRecipients: async (): Promise<CommunicationRecipient[]> => {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/messages/recipients`);
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/messages/recipients`,
+      );
       return response.data || [];
     } catch (error) {
       console.error("Failed to fetch message recipients:", error);
@@ -843,7 +859,10 @@ export const MessagesAPI = {
 
   getThread: async (
     threadId: string,
-  ): Promise<{ thread: CommunicationThread; messages: CommunicationMessage[] } | null> => {
+  ): Promise<{
+    thread: CommunicationThread;
+    messages: CommunicationMessage[];
+  } | null> => {
     try {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/messages/thread/${threadId}`,
@@ -855,9 +874,13 @@ export const MessagesAPI = {
     }
   },
 
-  getMessage: async (messageId: string): Promise<CommunicationMessage | null> => {
+  getMessage: async (
+    messageId: string,
+  ): Promise<CommunicationMessage | null> => {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/messages/${messageId}`);
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/messages/${messageId}`,
+      );
       return response.data || null;
     } catch (error) {
       console.error("Failed to fetch message:", error);
@@ -871,7 +894,10 @@ export const MessagesAPI = {
     content: string;
     threadId?: string;
     attachments?: File[];
-  }): Promise<{ message: CommunicationMessage; thread: CommunicationThread }> => {
+  }): Promise<{
+    message: CommunicationMessage;
+    thread: CommunicationThread;
+  }> => {
     const formData = new FormData();
     formData.append("receiverId", payload.receiverId);
     formData.append("subject", payload.subject);
@@ -932,8 +958,12 @@ export const MessagesAPI = {
     total: number;
   }> => {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/messages/unread-count`);
-      return response.data || { unreadMessages: 0, unreadNotifications: 0, total: 0 };
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/messages/unread-count`,
+      );
+      return (
+        response.data || { unreadMessages: 0, unreadNotifications: 0, total: 0 }
+      );
     } catch (error) {
       console.error("Failed to fetch unread counts:", error);
       return { unreadMessages: 0, unreadNotifications: 0, total: 0 };
@@ -967,7 +997,9 @@ export const NotificationsAPI = {
 
   getUnreadCount: async (): Promise<number> => {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/notifications/unread-count`);
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/notifications/unread-count`,
+      );
       return response.data?.unreadCount || 0;
     } catch (error) {
       console.error("Failed to fetch notification count:", error);
@@ -976,9 +1008,12 @@ export const NotificationsAPI = {
   },
 
   markRead: async (id: string): Promise<CommunicationNotification> => {
-    const response = await fetchWithAuth(`${API_BASE_URL}/notifications/${id}/read`, {
-      method: "PUT",
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/notifications/${id}/read`,
+      {
+        method: "PUT",
+      },
+    );
     return response.data;
   },
 
