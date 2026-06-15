@@ -626,8 +626,9 @@ const CommunicationCenter = ({
                   <div className="space-y-4 max-h-112 overflow-y-auto pr-1">
                     {threadMessages.map((message) => {
                       const isMine =
-                        String(message.sender?._id || message.sender) ===
-                        currentUserId;
+                        (typeof message.sender === "object"
+                          ? message.sender._id
+                          : message.sender) === currentUserId;
                       return (
                         <div
                           key={message._id}
