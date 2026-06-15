@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
 import { BookingsAPI } from "@/app/lib/api";
 import {
   ArrowLeft,
@@ -28,13 +29,15 @@ interface BookingRequest {
   sessionType: "personal" | "group" | "online";
   duration: number;
   price: number;
-  status: "pending" | "accepted" | "rejected" | "completed" | "rescheduled" | "pending_reschedule";
+  status: "pending" | "accepted" | "rejected" | "completed" | "rescheduled" | "pending_reschedule" | "cancelled";
   message?: string;
   requestedAt: string;
   rescheduledBy?: string;
   originalDate?: string;
   originalTime?: string;
   rescheduleReason?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
   rescheduleRequest?: {
     requestedDate: string;
     requestedTime: string;
@@ -52,19 +55,25 @@ const toBookingStatus = (value: string): BookingRequest["status"] => {
     "completed",
     "rescheduled",
     "pending_reschedule",
+    "cancelled",
   ];
 
   if (allowedStatuses.includes(value as BookingRequest["status"])) {
     return value as BookingRequest["status"];
   }
 
-  return "pending";
+  return value as BookingRequest["status"];
 };
+
+const socketBaseUrl =
+  process.env.NEXT_PUBLIC_SOCKET_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_URL?.trim()?.replace(/\/api\/?$/, "") ||
+  "http://localhost:5000";
 
 const BookingRequestsPage = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "pending" | "accepted" | "rejected" | "completed" | "all"
+    "pending" | "accepted" | "rejected" | "completed" | "cancelled" | "all"
   >("pending");
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(
     null,
@@ -81,51 +90,75 @@ const BookingRequestsPage = () => {
     reason: "",
   });
   const [successMessage, setSuccessMessage] = useState("");
+  const socketRef = useRef<Socket | null>(null);
+
+  const loadBookings = useCallback(async () => {
+    const userData = localStorage.getItem("user");
+    const user = userData ? JSON.parse(userData) : null;
+
+    if (!user) return;
+
+    try {
+      const allBookings = await BookingsAPI.getAll();
+
+      const requests: BookingRequest[] = allBookings.map((booking) => ({
+        _id: booking._id || booking.id || "",
+        id: booking.id,
+        clientName: booking.customerName || "Unknown Customer",
+        clientEmail: booking.customerEmail || "",
+        date: booking.date,
+        time: booking.time,
+        sessionType: booking.type,
+        duration: booking.duration,
+        price: booking.price,
+        status: toBookingStatus(booking.status),
+        message: booking.message,
+        requestedAt: booking.requestedAt,
+        originalDate: booking.originalDate,
+        originalTime: booking.originalTime,
+        rescheduleReason: booking.rescheduleReason,
+        rescheduledBy: booking.rescheduledBy,
+        cancellationReason: booking.cancellationReason,
+        cancelledAt: booking.cancelledAt,
+        rescheduleRequest: booking.rescheduleRequest,
+      }));
+
+      setBookingRequests(requests);
+    } catch (error) {
+      console.error("Failed to load bookings:", error);
+    }
+  }, []);
 
   // Load bookings for this coach
   useEffect(() => {
-    const loadBookings = async () => {
-      const userData = localStorage.getItem("user");
-      const user = userData ? JSON.parse(userData) : null;
-
-      if (!user) return;
-
-      try {
-        // Fetch all bookings from API
-        const allBookings = await BookingsAPI.getAll();
-
-        // Transform API bookings to BookingRequest format
-        const requests: BookingRequest[] = allBookings.map((booking) => ({
-          _id: booking._id || booking.id || "",
-          id: booking.id,
-          clientName: booking.customerName || "Unknown Customer",
-          clientEmail: booking.customerEmail || "",
-          date: booking.date,
-          time: booking.time,
-          sessionType: booking.type,
-          duration: booking.duration,
-          price: booking.price,
-          status: toBookingStatus(booking.status),
-          message: booking.message,
-          requestedAt: booking.requestedAt,
-          originalDate: booking.originalDate,
-          originalTime: booking.originalTime,
-          rescheduleReason: booking.rescheduleReason,
-          rescheduledBy: booking.rescheduledBy,
-          rescheduleRequest: booking.rescheduleRequest,
-        }));
-
-        setBookingRequests(requests);
-      } catch (error) {
-        console.error("Failed to load bookings:", error);
-      }
-    };
-
     loadBookings();
-    // Poll for new bookings every 5 seconds
     const interval = setInterval(loadBookings, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadBookings]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    const user = userData ? JSON.parse(userData) : null;
+    const coachId = user?._id || user?.id;
+    if (!coachId) return;
+
+    const socket = io(socketBaseUrl, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
+
+    socket.emit("register", coachId);
+    socket.on("bookingCancelled", () => {
+      loadBookings();
+    });
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [loadBookings]);
 
   const handleAction = (
     request: BookingRequest,
@@ -328,6 +361,9 @@ const BookingRequestsPage = () => {
     if (activeTab === "accepted") {
       return bookingRequests.filter((req) => req.status === "accepted" || req.status === "rescheduled");
     }
+    if (activeTab === "cancelled") {
+      return bookingRequests.filter((req) => req.status === "cancelled");
+    }
     return bookingRequests.filter((req) => req.status === activeTab);
   };
 
@@ -347,6 +383,8 @@ const BookingRequestsPage = () => {
         return "text-blue-400 bg-blue-500/20";
       case "rescheduled":
         return "text-purple-400 bg-purple-500/20";
+      case "cancelled":
+        return "text-gray-400 bg-gray-500/20 line-through";
       default:
         return "text-gray-400 bg-gray-500/20";
     }
@@ -386,6 +424,8 @@ const BookingRequestsPage = () => {
     bookingRequests.filter((r) => r.status === "rejected").length;
   const getCompletedCount = () =>
     bookingRequests.filter((r) => r.status === "completed").length;
+  const getCancelledCount = () =>
+    bookingRequests.filter((r) => r.status === "cancelled").length;
 
   return (
     <div className="min-h-screen bg-brand-dark">
@@ -510,6 +550,17 @@ const BookingRequestsPage = () => {
             Completed ({getCompletedCount()})
           </button>
           <button
+            onClick={() => setActiveTab("cancelled")}
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+              activeTab === "cancelled"
+                ? "bg-gray-500 text-brand-dark"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <X size={18} />
+            Cancelled ({getCancelledCount()})
+          </button>
+          <button
             onClick={() => setActiveTab("all")}
             className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${
               activeTab === "all"
@@ -538,6 +589,7 @@ const BookingRequestsPage = () => {
                 {activeTab === "rejected" &&
                   "You haven't rejected any bookings."}
                 {activeTab === "completed" && "No completed sessions yet."}
+                {activeTab === "cancelled" && "No cancelled sessions."}
                 {activeTab === "all" && "No booking requests found."}
               </p>
             </div>
@@ -695,6 +747,36 @@ const BookingRequestsPage = () => {
                         {request.rescheduleReason && (
                           <p className="text-xs text-gray-300 italic mt-2 pt-2 border-t border-white/10">
                             Reason: {request.rescheduleReason}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Cancellation Details */}
+                    {request.status === "cancelled" && (
+                      <div className="bg-gray-500/10 border border-gray-500/50 p-4 rounded-lg mb-3">
+                        <p className="text-sm font-semibold text-gray-400 mb-2">
+                          Cancelled Session
+                        </p>
+                        <p className="text-sm">
+                          <span className="text-gray-400">Customer:</span>{" "}
+                          {request.clientName}
+                        </p>
+                        {request.cancelledAt && (
+                          <p className="text-sm mt-1">
+                            <span className="text-gray-400">Cancelled on:</span>{" "}
+                            {new Date(request.cancelledAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        )}
+                        {request.cancellationReason && (
+                          <p className="text-xs text-gray-300 italic mt-2 pt-2 border-t border-white/10">
+                            Reason: {request.cancellationReason}
                           </p>
                         )}
                       </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
 import {
   Announcement,
   AnnouncementsAPI,
@@ -47,6 +48,11 @@ interface DashboardStats {
   ratingCount: number;
 }
 
+const socketBaseUrl =
+  process.env.NEXT_PUBLIC_SOCKET_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_URL?.trim()?.replace(/\/api\/?$/, "") ||
+  "http://localhost:5000";
+
 const getWeekStart = (date: Date): Date => {
   const result = new Date(date);
   const day = result.getDay();
@@ -73,6 +79,7 @@ const CoachDashboard = () => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [cancelledBookings, setCancelledBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
@@ -93,6 +100,14 @@ const CoachDashboard = () => {
         BookingsAPI.getByCoach(coachId),
         FeedbackAPI.getByCoach(coachId),
       ]);
+
+      const cancelled = allBookings
+        .filter((booking) => booking.status === "cancelled")
+        .sort((a, b) => {
+          const dateA = a.cancelledAt ? new Date(a.cancelledAt).getTime() : 0;
+          const dateB = b.cancelledAt ? new Date(b.cancelledAt).getTime() : 0;
+          return dateB - dateA;
+        });
 
       const today = new Date().toISOString().split("T")[0];
       const todaysBookings = allBookings
@@ -188,6 +203,7 @@ const CoachDashboard = () => {
       const fallbackAverageRating = Number(user?.rating) || 0;
 
       setTodayBookings(todaysBookings);
+      setCancelledBookings(cancelled);
       setDashboardStats({
         activeClients: Math.max(activeClientKeys.size, fallbackActiveClients),
         sessionsThisWeek,
@@ -198,9 +214,12 @@ const CoachDashboard = () => {
       });
     } catch {
       setTodayBookings([]);
+      setCancelledBookings([]);
     }
     setLoadingBookings(false);
   }, [user?.activeClients, user?.rating]);
+
+  const socketRef = useRef<Socket | null>(null);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -256,9 +275,31 @@ const CoachDashboard = () => {
       return;
     }
 
-    loadCoachPerformanceData(user._id || user.id || "");
-  }, [user]);
+    const coachId = user._id || user.id || "";
+    loadCoachPerformanceData(coachId);
+  }, [user, loadCoachPerformanceData]);
 
+  useEffect(() => {
+    const coachId = user?._id || user?.id;
+    if (!coachId) return;
+
+    const socket = io(socketBaseUrl, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
+
+    socket.emit("register", coachId);
+    socket.on("bookingCancelled", () => {
+      loadCoachPerformanceData(coachId);
+    });
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [user, loadCoachPerformanceData]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -546,6 +587,86 @@ const CoachDashboard = () => {
                 className="block w-full bg-brand-red hover:bg-red-700 py-3 rounded-lg font-bold text-center transition-colors"
               >
                 View Full Schedule
+              </Link>
+            </div>
+          </div>
+
+          {/* Cancelled Sessions */}
+          <div className="bg-brand-gray p-6 rounded-xl">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <AlertCircle className="text-gray-400" />
+              Cancelled Sessions
+            </h2>
+            <div className="space-y-3">
+              {loadingBookings ? (
+                <div className="text-center py-8 text-gray-400">
+                  <Clock className="mx-auto mb-2 animate-spin" size={32} />
+                  <p>Loading cancelled sessions...</p>
+                </div>
+              ) : cancelledBookings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="mx-auto mb-3 text-gray-500" size={48} />
+                  <p className="text-gray-400">No cancelled sessions</p>
+                </div>
+              ) : (
+                <>
+                  {cancelledBookings.slice(0, 5).map((booking, index) => (
+                    <div
+                      key={booking._id || index}
+                      className="bg-black/40 p-4 rounded-lg border-l-4 border-gray-500"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="font-bold">
+                            {booking.customerName || "Unknown Client"}
+                          </h3>
+                          <p className="text-sm text-gray-400">
+                            {new Date(booking.date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}{" "}
+                            at {booking.time || "TBD"}
+                          </p>
+                          {booking.cancelledAt && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Cancelled{" "}
+                              {new Date(booking.cancelledAt).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          )}
+                          {booking.cancellationReason && (
+                            <p className="text-xs text-gray-400 mt-1 italic">
+                              Reason: {booking.cancellationReason}
+                            </p>
+                          )}
+                        </div>
+                        <span className="bg-gray-500/20 text-gray-400 px-2 py-1 rounded text-xs font-semibold capitalize">
+                          cancelled
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {cancelledBookings.length > 5 && (
+                    <p className="text-center text-sm text-gray-400 pt-2">
+                      +{cancelledBookings.length - 5} more cancelled session
+                      {cancelledBookings.length - 5 > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </>
+              )}
+
+              <Link
+                href="/dashboard/coach/requests"
+                className="block w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg font-bold text-center transition-colors"
+              >
+                View All Cancelled Sessions
               </Link>
             </div>
           </div>

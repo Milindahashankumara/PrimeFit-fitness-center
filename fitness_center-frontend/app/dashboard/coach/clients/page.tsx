@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { io, Socket } from "socket.io-client";
 import { ArrowLeft, Calendar, Clock, Search, Users, Mail, CheckCircle2, TrendingUp, Star } from "lucide-react";
 import { BookingsAPI, Booking } from "@/app/lib/api";
 
@@ -82,6 +83,11 @@ const buildNextSessionLabel = (booking: Booking): string => {
   return parts.join(" • ");
 };
 
+const socketBaseUrl =
+  process.env.NEXT_PUBLIC_SOCKET_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_URL?.trim()?.replace(/\/api\/?$/, "") ||
+  "http://localhost:5000";
+
 const CoachClientsPage = () => {
   const router = useRouter();
   const [coach, setCoach] = useState<CoachUser | null>(null);
@@ -89,6 +95,20 @@ const CoachClientsPage = () => {
   const [clientsLoading, setClientsLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const socketRef = useRef<Socket | null>(null);
+
+  const loadClients = useCallback(async (coachId: string) => {
+    try {
+      setClientsLoading(true);
+      const coachBookings = await BookingsAPI.getByCoach(coachId);
+      setBookings(coachBookings);
+    } catch (error) {
+      console.error("Failed to load coach clients:", error);
+      setBookings([]);
+    } finally {
+      setClientsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const loadCoach = async () => {
@@ -114,22 +134,33 @@ const CoachClientsPage = () => {
   useEffect(() => {
     if (!coach) return;
 
-    const loadClients = async () => {
-      try {
-        setClientsLoading(true);
-        const coachId = coach._id || coach.id || "";
-        const coachBookings = await BookingsAPI.getByCoach(coachId);
-        setBookings(coachBookings);
-      } catch (error) {
-        console.error("Failed to load coach clients:", error);
-        setBookings([]);
-      } finally {
-        setClientsLoading(false);
-      }
-    };
+    const coachId = coach._id || coach.id || "";
+    loadClients(coachId);
+  }, [coach, loadClients]);
 
-    loadClients();
-  }, [coach]);
+  useEffect(() => {
+    if (!coach) return;
+
+    const coachId = coach._id || coach.id || "";
+    if (!coachId) return;
+
+    const socket = io(socketBaseUrl, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
+
+    socket.emit("register", coachId);
+    socket.on("bookingCancelled", () => {
+      loadClients(coachId);
+    });
+
+    socketRef.current = socket;
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [coach, loadClients]);
 
   const clientSummaries = useMemo<ClientSummary[]>(() => {
     const today = new Date();
