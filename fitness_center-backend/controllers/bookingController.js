@@ -1,5 +1,108 @@
 const Booking = require("../models/Booking");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
+const { emitToUser } = require("../services/socket");
+const {
+  sendEmail,
+  buildBookingCancellationEmailToCoach,
+  buildBookingCancellationEmailToCustomer,
+} = require("../services/emailService");
+
+const ACTIVE_BOOKING_STATUSES = [
+  "pending",
+  "accepted",
+  "rescheduled",
+  "pending_reschedule",
+];
+
+const getAppUrl = () =>
+  process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+
+const formatBookingDate = (dateStr) => {
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+const handleBookingCancellation = async (booking) => {
+  const coachId = String(booking.coachId);
+  const customerId = String(booking.customerId);
+  const appUrl = getAppUrl();
+  const sessionDetails = `${formatBookingDate(booking.date)} at ${booking.time}`;
+  const reasonText = booking.cancellationReason
+    ? ` Reason: ${booking.cancellationReason}`
+    : "";
+
+  emitToUser(coachId, "bookingCancelled", {
+    bookingId: String(booking._id),
+    customerId,
+    coachId,
+    status: "cancelled",
+  });
+
+  const coachNotification = await Notification.create({
+    user: coachId,
+    type: "system",
+    title: "Session cancelled",
+    body: `${booking.customerName} cancelled their ${booking.sessionType} session scheduled for ${sessionDetails}.${reasonText}`,
+    actionUrl: `${appUrl}/dashboard/coach/requests`,
+  });
+  emitToUser(coachId, "notification:received", coachNotification);
+
+  const customerNotification = await Notification.create({
+    user: customerId,
+    type: "system",
+    title: "Booking cancelled",
+    body: `Your session with ${booking.coachName} on ${sessionDetails} has been cancelled.`,
+    actionUrl: `${appUrl}/dashboard/customer/bookings`,
+  });
+  emitToUser(customerId, "notification:received", customerNotification);
+
+  const [coach, customer] = await Promise.all([
+    User.findById(coachId).select("email name"),
+    User.findById(customerId).select("email name"),
+  ]);
+
+  const coachEmail = coach?.email;
+  const customerEmail = customer?.email || booking.customerEmail;
+
+  if (coachEmail) {
+    await sendEmail({
+      to: coachEmail,
+      subject: `Session cancelled by ${booking.customerName}`,
+      text: `${booking.customerName} cancelled their session on ${sessionDetails}.${reasonText}`,
+      html: buildBookingCancellationEmailToCoach({
+        customerName: booking.customerName,
+        sessionType: booking.sessionType,
+        date: formatBookingDate(booking.date),
+        time: booking.time,
+        cancellationReason: booking.cancellationReason,
+        appUrl,
+      }),
+    });
+  }
+
+  if (customerEmail) {
+    await sendEmail({
+      to: customerEmail,
+      subject: `Your session with ${booking.coachName} has been cancelled`,
+      text: `Your session with ${booking.coachName} on ${sessionDetails} has been cancelled.`,
+      html: buildBookingCancellationEmailToCustomer({
+        coachName: booking.coachName,
+        sessionType: booking.sessionType,
+        date: formatBookingDate(booking.date),
+        time: booking.time,
+        appUrl,
+      }),
+    });
+  }
+};
 
 // Get all bookings (with filters)
 exports.getBookings = async (req, res) => {
@@ -24,6 +127,16 @@ exports.getBookings = async (req, res) => {
     // Filter by status
     if (req.query.status) {
       query.status = req.query.status;
+    }
+
+    // Return only active/upcoming bookings (excludes cancelled, rejected, completed)
+    if (req.query.activeOnly === "true" && !req.query.status) {
+      query.status = { $in: ACTIVE_BOOKING_STATUSES };
+    }
+
+    // Exclude a specific status when listing bookings
+    if (req.query.excludeStatus && !req.query.status && req.query.activeOnly !== "true") {
+      query.status = { $ne: req.query.excludeStatus };
     }
 
     // If user is customer, only show their bookings
@@ -225,6 +338,21 @@ exports.updateBooking = async (req, res) => {
         runValidators: false, // Skip validation for partial updates
       },
     );
+
+    if (
+      updatedBooking &&
+      updatedBooking.status === "cancelled" &&
+      booking.status !== "cancelled"
+    ) {
+      const cancellationBooking = {
+        ...booking.toObject(),
+        ...updateData,
+        status: "cancelled",
+      };
+      handleBookingCancellation(cancellationBooking).catch((error) => {
+        console.error("Failed to process booking cancellation side effects:", error);
+      });
+    }
 
     res.status(200).json({
       success: true,

@@ -47,6 +47,53 @@ const buildMessageEmail = ({ senderName, subject, content, appUrl }) => `
   </div>
 `;
 
+const buildBookingCancellationEmailToCoach = ({
+  customerName,
+  sessionType,
+  date,
+  time,
+  cancellationReason,
+  appUrl,
+}) => {
+  const reasonBlock = cancellationReason
+    ? `<p style="color: #bbb; margin: 16px 0 0;"><strong>Reason:</strong> ${cancellationReason}</p>`
+    : "";
+
+  return `
+  <div style="font-family: Arial, sans-serif; background: #111; color: #fff; padding: 24px;">
+    <div style="max-width: 640px; margin: 0 auto; background: #1c1c1c; border-radius: 16px; padding: 24px; border: 1px solid rgba(255,255,255,0.08);">
+      <h2 style="margin: 0 0 12px; color: #ff4d4d;">Session Cancelled</h2>
+      <p style="color: #eee; line-height: 1.6;">
+        <strong>${customerName}</strong> has cancelled their ${sessionType} session scheduled for
+        <strong>${date}</strong> at <strong>${time}</strong>.
+      </p>
+      ${reasonBlock}
+      <a href="${appUrl}/dashboard/coach/requests" style="display: inline-block; background: #ff4d4d; color: white; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: bold; margin-top: 20px;">View Coach Dashboard</a>
+    </div>
+  </div>
+`;
+};
+
+const buildBookingCancellationEmailToCustomer = ({
+  coachName,
+  sessionType,
+  date,
+  time,
+  appUrl,
+}) => `
+  <div style="font-family: Arial, sans-serif; background: #111; color: #fff; padding: 24px;">
+    <div style="max-width: 640px; margin: 0 auto; background: #1c1c1c; border-radius: 16px; padding: 24px; border: 1px solid rgba(255,255,255,0.08);">
+      <h2 style="margin: 0 0 12px; color: #ff4d4d;">Booking Cancelled</h2>
+      <p style="color: #eee; line-height: 1.6;">
+        Your ${sessionType} session with <strong>${coachName}</strong> on
+        <strong>${date}</strong> at <strong>${time}</strong> has been cancelled.
+      </p>
+      <p style="color: #bbb; margin-top: 16px;">This is your cancellation confirmation.</p>
+      <a href="${appUrl}/dashboard/customer/bookings" style="display: inline-block; background: #ff4d4d; color: white; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: bold; margin-top: 20px;">View My Bookings</a>
+    </div>
+  </div>
+`;
+
 const buildAnnouncementEmail = ({ senderName, subject, content, appUrl }) => `
   <div style="font-family: Arial, sans-serif; background: #111; color: #fff; padding: 24px;">
     <div style="max-width: 640px; margin: 0 auto; background: #1c1c1c; border-radius: 16px; padding: 24px; border: 1px solid rgba(255,255,255,0.08);">
@@ -80,5 +127,7 @@ module.exports = {
   sendEmail,
   buildMessageEmail,
   buildAnnouncementEmail,
+  buildBookingCancellationEmailToCoach,
+  buildBookingCancellationEmailToCustomer,
   isEmailConfigured,
 };

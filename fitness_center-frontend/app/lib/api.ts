@@ -88,6 +88,9 @@ export interface Booking {
     requestedAt?: string;
     requestedBy?: string;
   };
+  cancellationReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: "customer" | "coach" | "admin";
 }
 
 export interface Complaint {
