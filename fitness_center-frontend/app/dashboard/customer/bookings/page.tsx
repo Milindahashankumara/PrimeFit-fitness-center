@@ -132,16 +132,16 @@ const BookingsPage = () => {
                 booking.status === "pending_reschedule"
                   ? "pending_reschedule"
                   : booking.status === "rescheduled"
-                  ? "rescheduled"
-                  : booking.status === "accepted"
-                    ? "upcoming"
-                    : booking.status === "rejected"
-                      ? "cancelled"
-                      : booking.status === "completed"
-                        ? "completed"
-                        : booking.status === "cancelled"
-                          ? "cancelled"
-                          : "upcoming",
+                    ? "rescheduled"
+                    : booking.status === "accepted"
+                      ? "upcoming"
+                      : booking.status === "rejected"
+                        ? "cancelled"
+                        : booking.status === "completed"
+                          ? "completed"
+                          : booking.status === "cancelled"
+                            ? "cancelled"
+                            : "upcoming",
               location: booking.location || "TBD",
             };
           },
@@ -273,7 +273,9 @@ const BookingsPage = () => {
       return;
     }
 
-    const newSlot = new Date(`${rescheduleData.date}T${rescheduleData.time}:00`);
+    const newSlot = new Date(
+      `${rescheduleData.date}T${rescheduleData.time}:00`,
+    );
     if (Number.isNaN(newSlot.getTime())) {
       alert("Please choose a valid date and time.");
       return;
@@ -292,8 +294,8 @@ const BookingsPage = () => {
           requestedTime: rescheduleData.time,
           requestReason: rescheduleData.reason,
           requestedAt: new Date().toISOString(),
-          requestedBy: "customer"
-        }
+          requestedBy: "customer",
+        },
       });
 
       setAllBookings(
@@ -323,7 +325,10 @@ const BookingsPage = () => {
               "Please review and approve this request.\n\nThanks.",
           });
         } catch (messageError) {
-          console.error("Booking updated, but coach message failed:", messageError);
+          console.error(
+            "Booking updated, but coach message failed:",
+            messageError,
+          );
         }
       }
 
@@ -333,7 +338,10 @@ const BookingsPage = () => {
       alert("Reschedule request sent! Waiting for coach approval.");
     } catch (error) {
       alert(
-        getErrorMessage(error, "Failed to reschedule booking. Please try again."),
+        getErrorMessage(
+          error,
+          "Failed to reschedule booking. Please try again.",
+        ),
       );
       setShowRescheduleModal(false);
     }
@@ -371,7 +379,9 @@ const BookingsPage = () => {
       setSelectedBooking(null);
       setMessageData({ subject: "", content: "" });
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to send message. Please try again."));
+      alert(
+        getErrorMessage(error, "Failed to send message. Please try again."),
+      );
     }
   };
 
@@ -437,7 +447,16 @@ const BookingsPage = () => {
                 }`}
               >
                 Upcoming (
-                {allBookings.filter((b) => b.status === "upcoming" || b.status === "rescheduled" || b.status === "accepted" || b.status === "pending_reschedule").length})
+                {
+                  allBookings.filter(
+                    (b) =>
+                      b.status === "upcoming" ||
+                      b.status === "rescheduled" ||
+                      b.status === "accepted" ||
+                      b.status === "pending_reschedule",
+                  ).length
+                }
+                )
               </button>
               <button
                 onClick={() => setActiveTab("completed")}
@@ -581,17 +600,29 @@ const BookingsPage = () => {
                               )}
 
                             {/* Session Info Grid */}
-                            {booking.status === "pending_reschedule" && booking.rescheduleRequest ? (
+                            {booking.status === "pending_reschedule" &&
+                            booking.rescheduleRequest ? (
                               <div className="bg-black/40 p-4 rounded-xl mt-4">
-                                <p className="text-sm font-semibold text-orange-400 mb-3">Awaiting Coach Approval</p>
+                                <p className="text-sm font-semibold text-orange-400 mb-3">
+                                  Awaiting Coach Approval
+                                </p>
                                 <div className="space-y-2">
                                   <p className="text-sm">
-                                    <span className="text-gray-400">Current:</span> {formatDate(booking.date)} at {booking.time}
+                                    <span className="text-gray-400">
+                                      Current:
+                                    </span>{" "}
+                                    {formatDate(booking.date)} at {booking.time}
                                   </p>
                                   <p className="text-sm">
-                                    <span className="text-gray-400">Requested:</span>{" "}
+                                    <span className="text-gray-400">
+                                      Requested:
+                                    </span>{" "}
                                     <span className="text-green-400 font-semibold">
-                                      {formatDate(booking.rescheduleRequest.requestedDate)} at {booking.rescheduleRequest.requestedTime}
+                                      {formatDate(
+                                        booking.rescheduleRequest.requestedDate,
+                                      )}{" "}
+                                      at{" "}
+                                      {booking.rescheduleRequest.requestedTime}
                                     </span>
                                   </p>
                                 </div>
@@ -604,7 +635,9 @@ const BookingsPage = () => {
                                     size={18}
                                   />
                                   <div>
-                                    <p className="text-xs text-gray-400">Date</p>
+                                    <p className="text-xs text-gray-400">
+                                      Date
+                                    </p>
                                     <p className="font-semibold text-sm">
                                       {formatDate(booking.date)}
                                     </p>
@@ -617,7 +650,9 @@ const BookingsPage = () => {
                                     size={18}
                                   />
                                   <div>
-                                    <p className="text-xs text-gray-400">Time</p>
+                                    <p className="text-xs text-gray-400">
+                                      Time
+                                    </p>
                                     <p className="font-semibold text-sm">
                                       {booking.time}
                                     </p>
@@ -652,7 +687,9 @@ const BookingsPage = () => {
                                     size={18}
                                   />
                                   <div>
-                                    <p className="text-xs text-gray-400">Type</p>
+                                    <p className="text-xs text-gray-400">
+                                      Type
+                                    </p>
                                     <p className="font-semibold text-sm capitalize">
                                       {booking.type}
                                     </p>
@@ -674,7 +711,9 @@ const BookingsPage = () => {
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        {(booking.status === "upcoming" || booking.status === "rescheduled" || booking.status === "accepted") && (
+                        {(booking.status === "upcoming" ||
+                          booking.status === "rescheduled" ||
+                          booking.status === "accepted") && (
                           <>
                             <button
                               onClick={() => handleMessageCoach(booking)}
@@ -812,28 +851,39 @@ const BookingsPage = () => {
           <div className="bg-brand-gray rounded-2xl max-w-lg w-full p-6 border border-white/10">
             <h2 className="text-2xl font-bold mb-2">Reschedule Session</h2>
             <p className="text-gray-400 mb-6">
-              Update your booking with {selectedBooking.coachName}. The coach will be notified by email.
+              Update your booking with {selectedBooking.coachName}. The coach
+              will be notified by email.
             </p>
 
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">New Date</label>
+                <label className="block text-sm text-gray-400 mb-2">
+                  New Date
+                </label>
                 <input
                   type="date"
                   value={rescheduleData.date}
                   onChange={(event) =>
-                    setRescheduleData({ ...rescheduleData, date: event.target.value })
+                    setRescheduleData({
+                      ...rescheduleData,
+                      date: event.target.value,
+                    })
                   }
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-red"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">New Time</label>
+                <label className="block text-sm text-gray-400 mb-2">
+                  New Time
+                </label>
                 <input
                   type="time"
                   value={rescheduleData.time}
                   onChange={(event) =>
-                    setRescheduleData({ ...rescheduleData, time: event.target.value })
+                    setRescheduleData({
+                      ...rescheduleData,
+                      time: event.target.value,
+                    })
                   }
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-red"
                 />
@@ -846,7 +896,10 @@ const BookingsPage = () => {
                 rows={4}
                 value={rescheduleData.reason}
                 onChange={(event) =>
-                  setRescheduleData({ ...rescheduleData, reason: event.target.value })
+                  setRescheduleData({
+                    ...rescheduleData,
+                    reason: event.target.value,
+                  })
                 }
                 placeholder="Optional: share why you need to reschedule"
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-red resize-none"
@@ -885,24 +938,34 @@ const BookingsPage = () => {
             </p>
 
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Subject</label>
+              <label className="block text-sm text-gray-400 mb-2">
+                Subject
+              </label>
               <input
                 type="text"
                 value={messageData.subject}
                 onChange={(event) =>
-                  setMessageData({ ...messageData, subject: event.target.value })
+                  setMessageData({
+                    ...messageData,
+                    subject: event.target.value,
+                  })
                 }
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-red"
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-2">Message</label>
+              <label className="block text-sm text-gray-400 mb-2">
+                Message
+              </label>
               <textarea
                 rows={5}
                 value={messageData.content}
                 onChange={(event) =>
-                  setMessageData({ ...messageData, content: event.target.value })
+                  setMessageData({
+                    ...messageData,
+                    content: event.target.value,
+                  })
                 }
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-red resize-none"
               />
@@ -922,7 +985,9 @@ const BookingsPage = () => {
               <button
                 onClick={confirmMessageCoach}
                 className="flex-1 bg-brand-red hover:bg-red-700 py-3 rounded-xl font-semibold transition-colors"
-                disabled={!messageData.subject.trim() || !messageData.content.trim()}
+                disabled={
+                  !messageData.subject.trim() || !messageData.content.trim()
+                }
               >
                 Send Message
               </button>

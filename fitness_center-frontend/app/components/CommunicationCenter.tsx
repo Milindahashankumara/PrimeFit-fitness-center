@@ -67,10 +67,17 @@ const getParticipantLabel = (
   const others = thread.participants?.filter(
     (participant) => participant._id !== currentUserId,
   );
-  return others?.map((participant) => participant.name).join(", ") || thread.subject;
+  return (
+    others?.map((participant) => participant.name).join(", ") || thread.subject
+  );
 };
 
-const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props) => {
+const CommunicationCenter = ({
+  mode,
+  title,
+  description,
+  allowBroadcast,
+}: Props) => {
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
 
@@ -78,18 +85,25 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
   const [loading, setLoading] = useState(true);
   const [threads, setThreads] = useState<CommunicationThread[]>([]);
   const [recipients, setRecipients] = useState<CommunicationRecipient[]>([]);
-  const [notifications, setNotifications] = useState<CommunicationNotification[]>([]);
+  const [notifications, setNotifications] = useState<
+    CommunicationNotification[]
+  >([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [folder, setFolder] = useState<"inbox" | "sent" | "all">("inbox");
   const [search, setSearch] = useState("");
   const [composeMode, setComposeMode] = useState<ComposeMode>("direct");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [selectedThread, setSelectedThread] = useState<CommunicationThread | null>(null);
-  const [threadMessages, setThreadMessages] = useState<CommunicationMessage[]>([]);
+  const [selectedThread, setSelectedThread] =
+    useState<CommunicationThread | null>(null);
+  const [threadMessages, setThreadMessages] = useState<CommunicationMessage[]>(
+    [],
+  );
   const [selectedRecipientId, setSelectedRecipientId] = useState("");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [broadcastAudience, setBroadcastAudience] = useState<"all" | "customers" | "coaches">("all");
+  const [broadcastAudience, setBroadcastAudience] = useState<
+    "all" | "customers" | "coaches"
+  >("all");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
@@ -107,12 +121,13 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
   }, [currentUserId, selectedThread]);
 
   const loadOverview = React.useCallback(async () => {
-    const [threadData, recipientData, notificationData, unreadData] = await Promise.all([
-      MessagesAPI.getThreads({ folder, search }),
-      MessagesAPI.getRecipients(),
-      NotificationsAPI.getAll(),
-      MessagesAPI.getUnreadCount(),
-    ]);
+    const [threadData, recipientData, notificationData, unreadData] =
+      await Promise.all([
+        MessagesAPI.getThreads({ folder, search }),
+        MessagesAPI.getRecipients(),
+        NotificationsAPI.getAll(),
+        MessagesAPI.getUnreadCount(),
+      ]);
 
     setThreads(threadData);
     setRecipients(recipientData);
@@ -124,28 +139,36 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
     }
   }, [folder, search, selectedThreadId]);
 
-  const loadThread = React.useCallback(async (threadId: string) => {
-    setLoadingThread(true);
-    try {
-      const data = await MessagesAPI.getThread(threadId);
-      if (!data) return;
+  const loadThread = React.useCallback(
+    async (threadId: string) => {
+      setLoadingThread(true);
+      try {
+        const data = await MessagesAPI.getThread(threadId);
+        if (!data) return;
 
-      setSelectedThread(data.thread);
-      setThreadMessages(data.messages);
-      const unreadMessages = data.messages.filter(
-        (message) =>
-          String(message.receiver?._id || message.receiver) === currentUserId &&
-          !message.readAt,
-      );
+        setSelectedThread(data.thread);
+        setThreadMessages(data.messages);
+        const unreadMessages = data.messages.filter(
+          (message) =>
+            String(
+              typeof message.receiver === "string"
+                ? message.receiver
+                : message.receiver._id,
+            ) === currentUserId && !message.readAt,
+        );
 
-      if (unreadMessages.length > 0) {
-        await Promise.all(unreadMessages.map((message) => MessagesAPI.markRead(message._id)));
-        await loadOverview();
+        if (unreadMessages.length > 0) {
+          await Promise.all(
+            unreadMessages.map((message) => MessagesAPI.markRead(message._id)),
+          );
+          await loadOverview();
+        }
+      } finally {
+        setLoadingThread(false);
       }
-    } finally {
-      setLoadingThread(false);
-    }
-  }, [currentUserId, loadOverview]);
+    },
+    [currentUserId, loadOverview],
+  );
 
   useEffect(() => {
     const rawUser = localStorage.getItem("user");
@@ -155,7 +178,10 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
     }
 
     const parsed = JSON.parse(rawUser) as UserData;
-    if (parsed.role !== mode && !(mode === "admin" && parsed.role === "admin")) {
+    if (
+      parsed.role !== mode &&
+      !(mode === "admin" && parsed.role === "admin")
+    ) {
       router.push("/auth/login");
       return;
     }
@@ -168,7 +194,11 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
     if (!currentUserId) return;
 
     loadOverview().catch((loadError) => {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load communications");
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load communications",
+      );
     });
   }, [currentUserId, loadOverview]);
 
@@ -176,7 +206,11 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
     if (!selectedThreadId) return;
 
     loadThread(selectedThreadId).catch((loadError) => {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load conversation");
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load conversation",
+      );
     });
   }, [selectedThreadId, loadThread]);
 
@@ -220,7 +254,11 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
   }, [mode, recipients]);
 
   useEffect(() => {
-    if (!selectedRecipientId && filteredRecipients.length > 0 && composeMode === "direct") {
+    if (
+      !selectedRecipientId &&
+      filteredRecipients.length > 0 &&
+      composeMode === "direct"
+    ) {
       setSelectedRecipientId(filteredRecipients[0]._id);
     }
   }, [composeMode, filteredRecipients, selectedRecipientId]);
@@ -270,7 +308,11 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
       setComposeMode("direct");
       await loadOverview();
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "Failed to send message");
+      setError(
+        sendError instanceof Error
+          ? sendError.message
+          : "Failed to send message",
+      );
     } finally {
       setSending(false);
     }
@@ -281,7 +323,10 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
     await loadOverview();
   };
 
-  const selectedThreadLabel = getParticipantLabel(selectedThread, currentUserId);
+  const selectedThreadLabel = getParticipantLabel(
+    selectedThread,
+    currentUserId,
+  );
 
   if (loading) {
     return (
@@ -296,7 +341,10 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
       <header className="bg-brand-gray border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="hover:text-brand-red transition-colors">
+            <button
+              onClick={() => router.back()}
+              className="hover:text-brand-red transition-colors"
+            >
               <ArrowLeft size={22} />
             </button>
             <div>
@@ -309,7 +357,10 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
               <Bell size={16} />
               {unreadCount} unread
             </div>
-            <Link href={`/${mode === "admin" ? "dashboard/admin" : mode === "coach" ? "dashboard/coach" : "dashboard/customer"}`} className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link
+              href={`/${mode === "admin" ? "dashboard/admin" : mode === "coach" ? "dashboard/coach" : "dashboard/customer"}`}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
               Back to dashboard
             </Link>
           </div>
@@ -318,7 +369,9 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
 
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
         {(error || success) && (
-          <div className={`rounded-2xl border p-4 ${error ? "border-red-500/40 bg-red-500/10 text-red-200" : "border-green-500/40 bg-green-500/10 text-green-200"}`}>
+          <div
+            className={`rounded-2xl border p-4 ${error ? "border-red-500/40 bg-red-500/10 text-red-200" : "border-green-500/40 bg-green-500/10 text-green-200"}`}
+          >
             {error || success}
           </div>
         )}
@@ -393,15 +446,23 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                       className={`w-full text-left rounded-2xl border p-4 transition-all ${active ? "border-brand-red bg-brand-red/10" : "border-white/10 bg-black/20 hover:border-white/20"}`}
                     >
                       <div className="flex items-center justify-between gap-3 mb-2">
-                        <p className="font-semibold line-clamp-1">{selectedThreadId === thread._id ? selectedThreadLabel : thread.subject}</p>
+                        <p className="font-semibold line-clamp-1">
+                          {selectedThreadId === thread._id
+                            ? selectedThreadLabel
+                            : thread.subject}
+                        </p>
                         {thread.unreadCount ? (
-                          <span className="text-xs bg-brand-red text-white px-2 py-1 rounded-full">{thread.unreadCount}</span>
+                          <span className="text-xs bg-brand-red text-white px-2 py-1 rounded-full">
+                            {thread.unreadCount}
+                          </span>
                         ) : null}
                       </div>
                       <p className="text-xs text-gray-400 line-clamp-1">
                         {thread.lastMessage?.content || "No messages yet"}
                       </p>
-                      <p className="text-xs text-gray-500 mt-2">{formatTime(thread.lastMessageAt)}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formatTime(thread.lastMessageAt)}
+                      </p>
                     </button>
                   );
                 })
@@ -415,10 +476,14 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                 <div>
                   <h2 className="text-xl font-bold flex items-center gap-2">
                     <Mail className="text-brand-red" size={20} />
-                    {selectedThread ? selectedThread.subject : "Compose message"}
+                    {selectedThread
+                      ? selectedThread.subject
+                      : "Compose message"}
                   </h2>
                   <p className="text-sm text-gray-400">
-                    {selectedThread ? selectedThreadLabel : "Send a secure message or email from inside PrimeFit."}
+                    {selectedThread
+                      ? selectedThreadLabel
+                      : "Send a secure message or email from inside PrimeFit."}
                   </p>
                 </div>
                 {allowBroadcast && (
@@ -442,10 +507,16 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
               <div className="space-y-4">
                 {composeMode === "broadcast" && allowBroadcast ? (
                   <div>
-                    <label className="text-sm text-gray-400 mb-2 block">Audience</label>
+                    <label className="text-sm text-gray-400 mb-2 block">
+                      Audience
+                    </label>
                     <select
                       value={broadcastAudience}
-                      onChange={(e) => setBroadcastAudience(e.target.value as "all" | "customers" | "coaches")}
+                      onChange={(e) =>
+                        setBroadcastAudience(
+                          e.target.value as "all" | "customers" | "coaches",
+                        )
+                      }
                       className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 outline-none"
                     >
                       <option value="all">Customers and Coaches</option>
@@ -455,7 +526,9 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                   </div>
                 ) : (
                   <div>
-                    <label className="text-sm text-gray-400 mb-2 block">Recipient</label>
+                    <label className="text-sm text-gray-400 mb-2 block">
+                      Recipient
+                    </label>
                     <select
                       value={selectedRecipientId}
                       onChange={(e) => setSelectedRecipientId(e.target.value)}
@@ -475,7 +548,9 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                 )}
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-2 block">Subject</label>
+                  <label className="text-sm text-gray-400 mb-2 block">
+                    Subject
+                  </label>
                   <input
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
@@ -485,7 +560,9 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                 </div>
 
                 <div>
-                  <label className="text-sm text-gray-400 mb-2 block">Message</label>
+                  <label className="text-sm text-gray-400 mb-2 block">
+                    Message
+                  </label>
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -502,13 +579,17 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                     <input
                       type="file"
                       multiple
-                      onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                      onChange={(e) =>
+                        setAttachments(Array.from(e.target.files || []))
+                      }
                       className="hidden"
                     />
                   </label>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500">
-                      {attachments.length > 0 ? `${attachments.length} file(s) selected` : "No attachments"}
+                      {attachments.length > 0
+                        ? `${attachments.length} file(s) selected`
+                        : "No attachments"}
                     </span>
                     <button
                       onClick={handleSend}
@@ -516,7 +597,11 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                       className="bg-brand-red hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-3 rounded-xl font-semibold flex items-center gap-2"
                     >
                       <Send size={16} />
-                      {sending ? "Sending..." : composeMode === "broadcast" ? "Send Broadcast" : "Send Message"}
+                      {sending
+                        ? "Sending..."
+                        : composeMode === "broadcast"
+                          ? "Send Broadcast"
+                          : "Send Message"}
                     </button>
                   </div>
                 </div>
@@ -530,26 +615,48 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                   Messages
                 </h3>
                 {loadingThread ? (
-                  <div className="text-sm text-gray-400">Loading conversation...</div>
+                  <div className="text-sm text-gray-400">
+                    Loading conversation...
+                  </div>
                 ) : threadMessages.length === 0 ? (
-                  <div className="text-sm text-gray-400">Select a conversation to see the full message history.</div>
+                  <div className="text-sm text-gray-400">
+                    Select a conversation to see the full message history.
+                  </div>
                 ) : (
                   <div className="space-y-4 max-h-112 overflow-y-auto pr-1">
                     {threadMessages.map((message) => {
-                      const isMine = String(message.sender?._id || message.sender) === currentUserId;
+                      const isMine =
+                        String(message.sender?._id || message.sender) ===
+                        currentUserId;
                       return (
-                        <div key={message._id} className={`rounded-2xl p-4 border ${isMine ? "border-brand-red/30 bg-brand-red/10 ml-6" : "border-white/10 bg-black/20 mr-6"}`}>
+                        <div
+                          key={message._id}
+                          className={`rounded-2xl p-4 border ${isMine ? "border-brand-red/30 bg-brand-red/10 ml-6" : "border-white/10 bg-black/20 mr-6"}`}
+                        >
                           <div className="flex items-center justify-between gap-3 mb-2">
-                            <p className="text-sm font-semibold">{isMine ? "You" : (message.sender as CommunicationRecipient)?.name || "Sender"}</p>
-                            <span className="text-xs text-gray-500">{formatTime(message.createdAt)}</span>
+                            <p className="text-sm font-semibold">
+                              {isMine
+                                ? "You"
+                                : (message.sender as CommunicationRecipient)
+                                    ?.name || "Sender"}
+                            </p>
+                            <span className="text-xs text-gray-500">
+                              {formatTime(message.createdAt)}
+                            </span>
                           </div>
-                          <p className="font-semibold mb-2">{message.subject}</p>
-                          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-6">{message.content}</p>
+                          <p className="font-semibold mb-2">
+                            {message.subject}
+                          </p>
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-6">
+                            {message.content}
+                          </p>
                           {message.attachments?.length ? (
                             <div className="mt-3 flex flex-wrap gap-2">
                               {message.attachments.map((attachment) => (
                                 <a
-                                  key={attachment.fileUrl || attachment.fileName}
+                                  key={
+                                    attachment.fileUrl || attachment.fileName
+                                  }
                                   href={attachment.fileUrl}
                                   target="_blank"
                                   rel="noreferrer"
@@ -575,7 +682,9 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                 </h3>
                 <div className="space-y-3 max-h-112 overflow-y-auto pr-1">
                   {notifications.length === 0 ? (
-                    <div className="text-sm text-gray-400">No notifications yet.</div>
+                    <div className="text-sm text-gray-400">
+                      No notifications yet.
+                    </div>
                   ) : (
                     notifications.map((notification) => (
                       <button
@@ -584,11 +693,21 @@ const CommunicationCenter = ({ mode, title, description, allowBroadcast }: Props
                         className={`w-full text-left rounded-2xl border p-4 transition-colors ${notification.read ? "border-white/10 bg-black/20" : "border-brand-red/30 bg-brand-red/10"}`}
                       >
                         <div className="flex items-center justify-between gap-3 mb-2">
-                          <p className="font-semibold line-clamp-1">{notification.title}</p>
-                          {!notification.read && <span className="text-xs bg-brand-red text-white px-2 py-1 rounded-full">new</span>}
+                          <p className="font-semibold line-clamp-1">
+                            {notification.title}
+                          </p>
+                          {!notification.read && (
+                            <span className="text-xs bg-brand-red text-white px-2 py-1 rounded-full">
+                              new
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-400 line-clamp-2">{notification.body}</p>
-                        <p className="text-xs text-gray-500 mt-2">{formatTime(notification.createdAt)}</p>
+                        <p className="text-sm text-gray-400 line-clamp-2">
+                          {notification.body}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {formatTime(notification.createdAt)}
+                        </p>
                       </button>
                     ))
                   )}

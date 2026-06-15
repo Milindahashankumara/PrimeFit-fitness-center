@@ -459,7 +459,9 @@ exports.getMessageById = async (req, res) => {
 exports.sendMessage = async (req, res) => {
   try {
     const receiverId =
-      req.body.receiverId?._id || req.body.receiverId?.id || req.body.receiverId;
+      req.body.receiverId?._id ||
+      req.body.receiverId?.id ||
+      req.body.receiverId;
     const { subject, content, threadId } = req.body;
 
     if (!receiverId || !subject || !content) {
@@ -564,7 +566,9 @@ exports.sendAnnouncement = async (req, res) => {
           ? { role: "customer" }
           : { role: { $in: ["customer", "coach"] } };
 
-    const recipients = await User.find(query).select("name email role coachStatus");
+    const recipients = await User.find(query).select(
+      "name email role coachStatus",
+    );
     const sender = await User.findById(req.user.id);
     const attachments = buildAttachmentPayload(req, req.files || []);
 

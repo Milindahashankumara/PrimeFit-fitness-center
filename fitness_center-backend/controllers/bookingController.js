@@ -173,7 +173,7 @@ exports.updateBooking = async (req, res) => {
         });
       }
       // Coach can update all fields sent in the request
-      Object.keys(req.body).forEach(key => {
+      Object.keys(req.body).forEach((key) => {
         if (req.body[key] === null) {
           unsetFields[key] = "";
         } else {
@@ -195,7 +195,10 @@ exports.updateBooking = async (req, res) => {
         if (req.body.cancellationReason) {
           updateData.cancellationReason = req.body.cancellationReason;
         }
-      } else if (req.body.status === "pending_reschedule" && req.body.rescheduleRequest) {
+      } else if (
+        req.body.status === "pending_reschedule" &&
+        req.body.rescheduleRequest
+      ) {
         // Customer requesting reschedule - needs coach approval
         updateData.status = "pending_reschedule";
         updateData.rescheduleRequest = req.body.rescheduleRequest;
