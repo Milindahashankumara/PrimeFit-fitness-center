@@ -25,6 +25,7 @@ interface Booking {
   customerName?: string;
   customerEmail?: string;
   coachId?: string | { _id?: string; id?: string };
+  coach?: { _id?: string; id?: string } | string;
   coachName: string;
   coachImage: string;
   date: string;
@@ -65,6 +66,30 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   }
 
   return fallback;
+};
+
+const resolveCoachId = (booking: Booking): string | null => {
+  const coachIdValue = booking.coachId;
+  const coachValue = booking.coach;
+
+  const rawId =
+    (typeof coachIdValue === "object" && coachIdValue !== null
+      ? coachIdValue._id || coachIdValue.id
+      : coachIdValue) ||
+    (typeof coachValue === "object" && coachValue !== null
+      ? coachValue._id || coachValue.id
+      : coachValue);
+
+  if (!rawId) {
+    return null;
+  }
+
+  const id = String(rawId);
+  if (id.length !== 24 || !/^[a-f\d]{24}$/i.test(id)) {
+    return null;
+  }
+
+  return id;
 };
 
 const BookingsPage = () => {
@@ -112,9 +137,12 @@ const BookingsPage = () => {
           (booking, index) => {
             const bookingId = booking._id || booking.id || String(index);
             const coachIdValue =
-              typeof booking.coachId === "object" && booking.coachId !== null
+              (typeof booking.coachId === "object" && booking.coachId !== null
                 ? booking.coachId._id || booking.coachId.id || ""
-                : booking.coachId || "";
+                : booking.coachId || "") ||
+              (typeof booking.coach === "object" && booking.coach !== null
+                ? booking.coach._id || booking.coach.id || ""
+                : booking.coach || "");
             return {
               ...booking,
               id:
@@ -182,6 +210,18 @@ const BookingsPage = () => {
     }
     return booking.status === activeTab;
   });
+
+  const handleBookAgain = (booking: Booking) => {
+    const coachId = resolveCoachId(booking);
+    if (!coachId) {
+      alert(
+        "Unable to find coach information for this booking. Please browse coaches to book a new session.",
+      );
+      return;
+    }
+
+    router.push(`/dashboard/customer/coaches/${coachId}`);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -769,11 +809,7 @@ const BookingsPage = () => {
                               Leave Review
                             </button>
                             <button
-                              onClick={() =>
-                                router.push(
-                                  `/dashboard/customer/coaches/${booking.id}`,
-                                )
-                              }
+                              onClick={() => handleBookAgain(booking)}
                               className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors"
                             >
                               Book Again
@@ -782,11 +818,7 @@ const BookingsPage = () => {
                         )}
                         {booking.status === "cancelled" && (
                           <button
-                            onClick={() =>
-                              router.push(
-                                `/dashboard/customer/coaches/${booking.id}`,
-                              )
-                            }
+                            onClick={() => handleBookAgain(booking)}
                             className="flex-1 bg-brand-red hover:bg-red-700 py-2 rounded-lg font-semibold transition-colors"
                           >
                             Book Again
