@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import {
   ArrowLeft,
@@ -79,6 +79,7 @@ const CommunicationCenter = ({
   allowBroadcast,
 }: Props) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const socketRef = useRef<Socket | null>(null);
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -148,6 +149,14 @@ const CommunicationCenter = ({
 
         setSelectedThread(data.thread);
         setThreadMessages(data.messages);
+
+        const replyRecipient = data.thread.participants?.find(
+          (participant) => participant._id !== currentUserId,
+        );
+        if (replyRecipient?._id) {
+          setSelectedRecipientId(replyRecipient._id);
+        }
+
         const unreadMessages = data.messages.filter(
           (message) =>
             String(
@@ -242,7 +251,7 @@ const CommunicationCenter = ({
   }, [currentUserId, loadOverview, loadThread, selectedThreadId]);
 
   const filteredRecipients = useMemo(() => {
-    return recipients.filter((recipient) => {
+    const matchesMode = (recipient: CommunicationRecipient) => {
       if (mode === "admin") {
         return recipient.role === "customer" || recipient.role === "coach";
       }
@@ -250,8 +259,56 @@ const CommunicationCenter = ({
         return recipient.role === "coach" || recipient.role === "admin";
       }
       return recipient.role === "customer" || recipient.role === "admin";
-    });
+    };
+
+    return recipients
+      .filter(matchesMode)
+      .sort((a, b) => {
+        if (mode === "customer" && a.role !== b.role) {
+          return a.role === "admin" ? -1 : 1;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
   }, [mode, recipients]);
+
+  const adminRecipient = useMemo(
+    () => filteredRecipients.find((recipient) => recipient.role === "admin"),
+    [filteredRecipients],
+  );
+
+  const selectedRecipient = useMemo(
+    () =>
+      filteredRecipients.find(
+        (recipient) => recipient._id === selectedRecipientId,
+      ) || null,
+    [filteredRecipients, selectedRecipientId],
+  );
+
+  const isThreadReply = useMemo(() => {
+    if (!selectedThreadId || !threadReplyRecipientId || !selectedRecipientId) {
+      return false;
+    }
+
+    return selectedRecipientId === threadReplyRecipientId;
+  }, [selectedRecipientId, selectedThreadId, threadReplyRecipientId]);
+
+  const startAdminMessage = () => {
+    if (!adminRecipient) {
+      setError("No admin recipient is available.");
+      return;
+    }
+
+    setSelectedThreadId(null);
+    setSelectedThread(null);
+    setThreadMessages([]);
+    setSelectedRecipientId(adminRecipient._id);
+    setComposeMode("direct");
+    setSubject("");
+    setContent("");
+    setError("");
+    setSuccess("");
+  };
 
   useEffect(() => {
     if (
@@ -259,15 +316,36 @@ const CommunicationCenter = ({
       filteredRecipients.length > 0 &&
       composeMode === "direct"
     ) {
-      setSelectedRecipientId(filteredRecipients[0]._id);
+      const defaultRecipient =
+        mode === "customer"
+          ? adminRecipient || filteredRecipients[0]
+          : filteredRecipients[0];
+
+      if (defaultRecipient) {
+        setSelectedRecipientId(defaultRecipient._id);
+      }
     }
-  }, [composeMode, filteredRecipients, selectedRecipientId]);
+  }, [
+    adminRecipient,
+    composeMode,
+    filteredRecipients,
+    mode,
+    selectedRecipientId,
+  ]);
 
   useEffect(() => {
-    if (composeMode === "direct" && threadReplyRecipientId) {
-      setSelectedRecipientId(threadReplyRecipientId);
-    }
-  }, [composeMode, threadReplyRecipientId]);
+    if (mode !== "customer" || recipients.length === 0) return;
+    if (searchParams.get("recipient") !== "admin") return;
+
+    const admin = recipients.find((recipient) => recipient.role === "admin");
+    if (!admin) return;
+
+    setSelectedThreadId(null);
+    setSelectedThread(null);
+    setThreadMessages([]);
+    setSelectedRecipientId(admin._id);
+    setComposeMode("direct");
+  }, [mode, recipients, searchParams]);
 
   const handleSend = async () => {
     try {
@@ -284,18 +362,17 @@ const CommunicationCenter = ({
         });
         setSuccess(`Broadcast sent to ${result.sentCount} users.`);
       } else {
-        const directRecipientId = threadReplyRecipientId || selectedRecipientId;
-
-        if (!directRecipientId) {
+        if (!selectedRecipientId) {
           throw new Error("Please select a recipient");
         }
 
         const result = await MessagesAPI.send({
-          receiverId: directRecipientId,
+          receiverId: selectedRecipientId,
+          receiverRole: selectedRecipient?.role,
           subject,
           content,
           attachments,
-          threadId: selectedThreadId || undefined,
+          threadId: isThreadReply ? selectedThreadId || undefined : undefined,
         });
 
         setSelectedThreadId(result.thread._id);
@@ -501,6 +578,14 @@ const CommunicationCenter = ({
                       Broadcast
                     </button>
                   </div>
+                )}
+                {mode === "customer" && adminRecipient && (
+                  <button
+                    onClick={startAdminMessage}
+                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white/10 hover:bg-white/20 border border-white/10 transition-colors"
+                  >
+                    Send Message to Admin
+                  </button>
                 )}
               </div>
 
