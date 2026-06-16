@@ -115,7 +115,7 @@ const getAllowedRecipients = async (user) => {
       .select("name email role coachStatus")
       .sort({ name: 1 });
 
-    return [...coaches, ...admins];
+    return [...admins, ...coaches];
   }
 
   const bookingCustomers = await Booking.distinct("customerId", {
@@ -463,8 +463,11 @@ exports.sendMessage = async (req, res) => {
       req.body.receiverId?.id ||
       req.body.receiverId;
     const { subject, content, threadId } = req.body;
+    const receiverRole = String(req.body.receiverRole || "")
+      .trim()
+      .toLowerCase();
 
-    if (!receiverId || !subject || !content) {
+    if ((!receiverId && receiverRole !== "admin") || !subject || !content) {
       return res.status(400).json({
         success: false,
         message: "Receiver, subject, and content are required",
@@ -472,12 +475,29 @@ exports.sendMessage = async (req, res) => {
     }
 
     const sender = await User.findById(req.user.id);
-    const receiver = await User.findById(receiverId);
 
-    if (!sender || !receiver) {
+    if (!sender) {
       return res.status(404).json({
         success: false,
-        message: "Sender or receiver not found",
+        message: "Sender not found",
+      });
+    }
+
+    let receiver = null;
+
+    if (receiverRole === "admin") {
+      receiver = await User.findOne({ role: "admin" }).sort({ createdAt: 1 });
+    } else {
+      receiver = await User.findById(receiverId);
+    }
+
+    if (!receiver) {
+      return res.status(404).json({
+        success: false,
+        message:
+          receiverRole === "admin"
+            ? "Admin not found"
+            : "Receiver not found",
       });
     }
 

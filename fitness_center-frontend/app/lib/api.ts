@@ -896,6 +896,7 @@ export const MessagesAPI = {
     subject: string;
     content: string;
     threadId?: string;
+    receiverRole?: "customer" | "coach" | "admin";
     attachments?: File[];
   }): Promise<{
     message: CommunicationMessage;
@@ -908,6 +909,10 @@ export const MessagesAPI = {
 
     if (payload.threadId) {
       formData.append("threadId", payload.threadId);
+    }
+
+    if (payload.receiverRole) {
+      formData.append("receiverRole", payload.receiverRole);
     }
 
     payload.attachments?.forEach((file) => {
