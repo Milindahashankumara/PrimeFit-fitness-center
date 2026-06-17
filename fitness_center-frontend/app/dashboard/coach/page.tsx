@@ -183,7 +183,7 @@ const CoachDashboard = () => {
       const revenueChangePercent =
         revenuePreviousMonth > 0
           ? ((revenueThisMonth - revenuePreviousMonth) / revenuePreviousMonth) *
-            100
+          100
           : revenueThisMonth > 0
             ? 100
             : 0;
@@ -196,7 +196,7 @@ const CoachDashboard = () => {
       const averageRating =
         approvedRatings.length > 0
           ? approvedRatings.reduce((sum, rating) => sum + rating, 0) /
-            approvedRatings.length
+          approvedRatings.length
           : Number(user?.rating) || 0;
 
       const fallbackActiveClients = Number(user?.activeClients) || 0;
@@ -351,7 +351,6 @@ const CoachDashboard = () => {
 
         <div className="bg-brand-gray p-6 rounded-xl mb-8">
           <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
-            <ClipboardList className="text-brand-red" />
             Coach Announcements
           </h2>
           <p className="text-sm text-gray-400 mb-4">
@@ -513,7 +512,6 @@ const CoachDashboard = () => {
           {/* Today's Schedule */}
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Calendar className="text-brand-red" />
               Today&apos;s Schedule
             </h2>
             <div className="space-y-3">
@@ -594,7 +592,6 @@ const CoachDashboard = () => {
           {/* Cancelled Sessions */}
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <AlertCircle className="text-gray-400" />
               Cancelled Sessions
             </h2>
             <div className="space-y-3">

@@ -214,7 +214,6 @@ const CustomerDashboardContent = () => {
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
-              <Megaphone className="text-brand-red" />
               Announcements for You
             </h2>
             <p className="text-sm text-gray-400 mb-4">
@@ -356,7 +355,6 @@ const CustomerDashboardContent = () => {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Calendar className="text-brand-red" />
               Upcoming Sessions
             </h2>
             <div className="space-y-3">
@@ -391,7 +389,6 @@ const CustomerDashboardContent = () => {
 
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
-              <Folder className="text-brand-red" />
               Fitness Resources
             </h2>
             <p className="text-sm text-gray-400 mb-4">
@@ -454,7 +451,6 @@ const CustomerDashboardContent = () => {
 
           <div className="bg-brand-gray p-6 rounded-xl">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <User className="text-brand-red" />
               My Coaches
             </h2>
             <div className="space-y-3">
