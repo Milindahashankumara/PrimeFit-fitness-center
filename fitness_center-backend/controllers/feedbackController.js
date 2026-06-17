@@ -1,5 +1,6 @@
 const Feedback = require("../models/Feedback");
 const User = require("../models/User");
+const Booking = require("../models/Booking");
 
 // Get all feedback
 exports.getAllFeedback = async (req, res) => {
@@ -16,13 +17,13 @@ exports.getAllFeedback = async (req, res) => {
       query.coachId = req.query.coachId;
     }
 
-    // If user is customer, only show their feedback
-    if (req.user.role === "customer") {
+    // If user is customer, and they are not querying a specific coach's reviews, only show their feedback
+    if (req.user.role === "customer" && !req.query.coachId) {
       query.customerId = req.user.id;
     }
 
-    // If user is coach, only show feedback for them
-    if (req.user.role === "coach") {
+    // If user is coach, and they are not querying a specific coach's reviews, only show feedback for them
+    if (req.user.role === "coach" && !req.query.coachId) {
       query.coachId = req.user.id;
     }
 
@@ -113,6 +114,34 @@ exports.createFeedback = async (req, res) => {
       feedback: feedbackText,
     } = req.body;
 
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID (sessionId) is required",
+      });
+    }
+
+    if (!coachId) {
+      return res.status(400).json({
+        success: false,
+        message: "Coach ID is required",
+      });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a rating between 1 and 5",
+      });
+    }
+
+    if (!feedbackText) {
+      return res.status(400).json({
+        success: false,
+        message: "Feedback text is required",
+      });
+    }
+
     // Verify coach exists
     const coach = await User.findById(coachId);
     if (!coach || coach.role !== "coach") {
@@ -122,7 +151,41 @@ exports.createFeedback = async (req, res) => {
       });
     }
 
-    // Create feedback
+    // Verify booking exists
+    const booking = await Booking.findById(sessionId);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    // Verify booking belongs to customer
+    if (booking.customerId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to rate this booking",
+      });
+    }
+
+    // Verify booking status is Completed
+    if (booking.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only rate completed bookings",
+      });
+    }
+
+    // Verify booking has not already been reviewed
+    const existingFeedback = await Feedback.findOne({ sessionId });
+    if (existingFeedback) {
+      return res.status(400).json({
+        success: false,
+        message: "This booking has already been reviewed",
+      });
+    }
+
+    // Create feedback (auto-approved so it updates stats immediately and is visible)
     const newFeedback = await Feedback.create({
       sessionId,
       coachId,
@@ -132,8 +195,18 @@ exports.createFeedback = async (req, res) => {
       customerEmail: req.user.email,
       rating,
       feedback: feedbackText,
-      status: "pending",
+      status: "approved",
+      submittedDate: new Date(),
     });
+
+    // Update coach statistics dynamically from all approved reviews
+    const approvedReviews = await Feedback.find({ coachId, status: "approved" });
+    const count = approvedReviews.length;
+    const avg = count > 0 ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+
+    coach.reviewCount = count;
+    coach.rating = avg;
+    await coach.save();
 
     res.status(201).json({
       success: true,

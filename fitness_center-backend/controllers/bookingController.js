@@ -129,6 +129,11 @@ exports.getBookings = async (req, res) => {
       query.status = req.query.status;
     }
 
+    // Filter by date
+    if (req.query.date) {
+      query.date = req.query.date;
+    }
+
     // Return only active/upcoming bookings (excludes cancelled, rejected, completed)
     if (req.query.activeOnly === "true" && !req.query.status) {
       query.status = { $in: ACTIVE_BOOKING_STATUSES };
@@ -229,7 +234,31 @@ exports.createBooking = async (req, res) => {
       customerEmail,
     } = req.body;
 
-    // Fetch the coach to verify blocked dates
+    // Helper functions for time conversions and slot generation
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return 0;
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const minutesToTime = (minutes) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+    };
+
+    const generateHourlySlots = (startTime, endTime, durationMinutes) => {
+      const slotsList = [];
+      let current = timeToMinutes(startTime);
+      const end = timeToMinutes(endTime);
+      while (current + durationMinutes <= end) {
+        slotsList.push(minutesToTime(current));
+        current += 60;
+      }
+      return slotsList;
+    };
+
+    // Fetch the coach to verify blocked dates and availability schedule
     const coach = await User.findOne({ _id: coachId, role: "coach" });
     if (!coach) {
       return res.status(404).json({
@@ -249,6 +278,73 @@ exports.createBooking = async (req, res) => {
           message: "The coach has blocked this date and is not available for bookings.",
         });
       }
+    }
+
+    // Determine the weekday of the requested date safely (timezone-independent)
+    const [year, month, dayVal] = date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, dayVal);
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const weekdayName = weekdays[dateObj.getDay()];
+
+    // Parse availability slots
+    let slots = coach.availability;
+    if (typeof slots === "string") {
+      try {
+        slots = JSON.parse(slots);
+      } catch (e) {
+        slots = [];
+      }
+    }
+    if (!Array.isArray(slots)) {
+      slots = [];
+    }
+
+    const daySlots = slots.filter((s) => s && s.day === weekdayName && s.startTime && s.endTime);
+    if (daySlots.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `The coach is not available on ${weekdayName}s.`,
+      });
+    }
+
+    // Verify time is inside availability windows (respecting 60-minute duration)
+    let isValidTime = false;
+    for (const slot of daySlots) {
+      const allowedSlots = generateHourlySlots(slot.startTime, slot.endTime, 60);
+      if (allowedSlots.includes(time)) {
+        isValidTime = true;
+        break;
+      }
+    }
+
+    if (!isValidTime) {
+      return res.status(400).json({
+        success: false,
+        message: "The requested time slot is outside the coach's available hours or does not fit the duration constraint.",
+      });
+    }
+
+    // Verify that the time slot is not already booked by another customer
+    const existingBooking = await Booking.findOne({
+      coachId,
+      date,
+      time,
+      status: { $in: ["pending", "accepted", "rescheduled", "pending_reschedule"] }
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({
+        success: false,
+        message: "This time slot is already booked by another customer.",
+      });
     }
 
     // Create booking data

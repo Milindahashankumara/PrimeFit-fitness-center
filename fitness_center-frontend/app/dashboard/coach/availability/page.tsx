@@ -136,13 +136,17 @@ const AvailabilityPage = () => {
         
         // Load availability slots if they exist in DB
         if (currentUser.availability) {
-          try {
-            const parsedSlots = JSON.parse(currentUser.availability);
-            if (Array.isArray(parsedSlots)) {
-              setAvailabilitySlots(parsedSlots);
+          if (Array.isArray(currentUser.availability)) {
+            setAvailabilitySlots(currentUser.availability);
+          } else if (typeof currentUser.availability === "string") {
+            try {
+              const parsedSlots = JSON.parse(currentUser.availability);
+              if (Array.isArray(parsedSlots)) {
+                setAvailabilitySlots(parsedSlots);
+              }
+            } catch (e) {
+              console.error("Failed to parse availability slots", e);
             }
-          } catch (e) {
-            console.error("Failed to parse availability slots", e);
           }
         }
         
@@ -172,7 +176,7 @@ const AvailabilityPage = () => {
     try {
       setSaving(true);
       const updates = {
-        availability: JSON.stringify(availabilitySlots),
+        availability: availabilitySlots,
         blockedDates: blockedDates,
       };
       await CoachesAPI.update(coachId, updates);
@@ -236,8 +240,8 @@ const AvailabilityPage = () => {
 
   const getSlotsByDay = (day: string) => {
     return availabilitySlots
-      .filter((slot) => slot.day === day)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      .filter((slot) => slot && slot.day === day && slot.startTime && slot.endTime)
+      .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
   };
 
   const getSessionTypeColor = (type: string) => {
@@ -255,6 +259,9 @@ const AvailabilityPage = () => {
 
   const getTotalHoursPerWeek = () => {
     return availabilitySlots.reduce((total, slot) => {
+      if (!slot || !slot.startTime || !slot.endTime) {
+        return total;
+      }
       const start = parseInt(slot.startTime.split(":")[0]);
       const end = parseInt(slot.endTime.split(":")[0]);
       return total + (end - start);
