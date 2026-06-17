@@ -41,6 +41,7 @@ interface Coach {
   certifications?: string[];
   achievements?: string[];
   coachStatus?: string;
+  blockedDates?: { id: string; date: string; reason: string }[];
 }
 
 interface CustomerUser {
@@ -111,6 +112,19 @@ const CoachDetailPage = () => {
     loadCoachData();
   }, [loadCoachData]);
 
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const isDateBlocked = useCallback((date: Date) => {
+    if (!coach || !coach.blockedDates) return false;
+    const dateStr = getLocalDateString(date);
+    return coach.blockedDates.some((b: any) => b.date === dateStr);
+  }, [coach]);
+
   const generateDates = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -140,7 +154,7 @@ const CoachDetailPage = () => {
       slots.push({
         time,
         available: true,
-        date: date.toISOString(),
+        date: getLocalDateString(date),
       });
     });
 
@@ -608,28 +622,37 @@ const CoachDetailPage = () => {
                       Select Date
                     </label>
                     <div className="grid grid-cols-7 gap-2">
-                      {dates.map((date) => (
-                        <button
-                          key={date.toISOString()}
-                          onClick={() => {
-                            setSelectedDate(date);
-                            setSelectedTimeSlot(null);
-                          }}
-                          className={`p-3 rounded-xl text-center transition-all ${
-                            selectedDate.toDateString() === date.toDateString()
-                              ? "bg-brand-red border-2 border-brand-red"
-                              : "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
-                          }`}
-                        >
-                          <p className="text-xs text-gray-400">
-                            {getDayName(date)}
-                          </p>
-                          <p className="font-bold">{date.getDate()}</p>
-                          {isToday(date) && (
-                            <p className="text-xs text-brand-red mt-1">Today</p>
-                          )}
-                        </button>
-                      ))}
+                      {dates.map((date) => {
+                        const blocked = isDateBlocked(date);
+                        return (
+                          <button
+                            key={date.toISOString()}
+                            disabled={blocked}
+                            onClick={() => {
+                              setSelectedDate(date);
+                              setSelectedTimeSlot(null);
+                            }}
+                            className={`p-3 rounded-xl text-center transition-all ${
+                              selectedDate.toDateString() === date.toDateString()
+                                ? "bg-brand-red border-2 border-brand-red"
+                                : blocked
+                                  ? "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed text-gray-500"
+                                  : "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
+                            }`}
+                          >
+                            <p className="text-xs text-gray-400">
+                              {getDayName(date)}
+                            </p>
+                            <p className="font-bold">{date.getDate()}</p>
+                            {isToday(date) && !blocked && (
+                              <p className="text-xs text-brand-red mt-1">Today</p>
+                            )}
+                            {blocked && (
+                              <p className="text-[10px] text-red-500 font-semibold mt-1">Blocked</p>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -639,26 +662,33 @@ const CoachDetailPage = () => {
                       Available Time Slots - {formatDate(selectedDate)}
                     </label>
                     <div className="grid grid-cols-3 md:grid-cols-5 gap-3 max-h-64 overflow-y-auto">
-                      {timeSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          disabled={!slot.available}
-                          onClick={() => setSelectedTimeSlot(slot)}
-                          className={`p-3 rounded-lg text-center transition-all ${
-                            selectedTimeSlot?.time === slot.time
-                              ? "bg-brand-red border-2 border-brand-red"
-                              : slot.available
-                                ? "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
-                                : "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed"
-                          }`}
-                        >
-                          <Clock size={16} className="mx-auto mb-1" />
-                          <p className="font-semibold text-sm">{slot.time}</p>
-                          {!slot.available && (
-                            <p className="text-xs text-red-400 mt-1">Booked</p>
-                          )}
-                        </button>
-                      ))}
+                      {isDateBlocked(selectedDate) ? (
+                        <div className="col-span-full py-6 text-center text-red-400 bg-red-500/10 rounded-xl border border-red-500/20">
+                          <p className="font-bold mb-1">Coach Unavailable</p>
+                          <p className="text-xs text-gray-400">This date has been blocked by the coach.</p>
+                        </div>
+                      ) : (
+                        timeSlots.map((slot) => (
+                          <button
+                            key={slot.time}
+                            disabled={!slot.available}
+                            onClick={() => setSelectedTimeSlot(slot)}
+                            className={`p-3 rounded-lg text-center transition-all ${
+                              selectedTimeSlot?.time === slot.time
+                                ? "bg-brand-red border-2 border-brand-red"
+                                : slot.available
+                                  ? "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
+                                  : "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed"
+                            }`}
+                          >
+                            <Clock size={16} className="mx-auto mb-1" />
+                            <p className="font-semibold text-sm">{slot.time}</p>
+                            {!slot.available && (
+                              <p className="text-xs text-red-400 mt-1">Booked</p>
+                            )}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
 

@@ -192,6 +192,7 @@ exports.updateProfile = async (req, res) => {
       "certifications",
       "hourlyRate",
       "availability",
+      "blockedDates",
     ];
 
     allowedUpdates.forEach((field) => {

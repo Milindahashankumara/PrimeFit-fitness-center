@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Trash2,
   AlertCircle,
 } from "lucide-react";
+import { AuthAPI, CoachesAPI } from "@/app/lib/api";
 
 interface TimeSlot {
   id: string;
@@ -36,6 +37,10 @@ const AvailabilityPage = () => {
   const [showAddSlot, setShowAddSlot] = useState(false);
   const [showBlockDate, setShowBlockDate] = useState(false);
   const idCounterRef = useRef(100);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [coachId, setCoachId] = useState<string>("");
 
   const nextId = () => {
     const nextValue = idCounterRef.current;
@@ -122,6 +127,65 @@ const AvailabilityPage = () => {
     reason: "",
   });
 
+  const loadCoachData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const currentUser = await AuthAPI.getCurrentUser();
+      if (currentUser && currentUser.role === "coach") {
+        setCoachId(currentUser._id || currentUser.id || "");
+        
+        // Load availability slots if they exist in DB
+        if (currentUser.availability) {
+          try {
+            const parsedSlots = JSON.parse(currentUser.availability);
+            if (Array.isArray(parsedSlots)) {
+              setAvailabilitySlots(parsedSlots);
+            }
+          } catch (e) {
+            console.error("Failed to parse availability slots", e);
+          }
+        }
+        
+        // Load blocked dates if they exist in DB
+        if (Array.isArray(currentUser.blockedDates)) {
+          setBlockedDates(currentUser.blockedDates);
+        }
+      } else {
+        router.push("/auth/login");
+      }
+    } catch (error) {
+      console.error("Error loading coach availability data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadCoachData();
+  }, [loadCoachData]);
+
+  const handleSave = async () => {
+    if (!coachId) {
+      alert("Coach profile not loaded");
+      return;
+    }
+    try {
+      setSaving(true);
+      const updates = {
+        availability: JSON.stringify(availabilitySlots),
+        blockedDates: blockedDates,
+      };
+      await CoachesAPI.update(coachId, updates);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to save schedule:", error);
+      alert("Failed to save schedule. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAddSlot = () => {
     const slot: TimeSlot = {
       ...newSlot,
@@ -197,6 +261,17 @@ const AvailabilityPage = () => {
     }, 0);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-brand-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading schedule...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-brand-dark">
       {/* Header */}
@@ -217,13 +292,23 @@ const AvailabilityPage = () => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowAddSlot(true)}
-              className="bg-brand-red hover:bg-red-700 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Add Time Slot
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 text-brand-dark"
+              >
+                <Save size={18} />
+                {saving ? "Saving..." : "Save Schedule"}
+              </button>
+              <button
+                onClick={() => setShowAddSlot(true)}
+                className="bg-brand-red hover:bg-red-700 px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Add Time Slot
+              </button>
+            </div>
           </div>
         </div>
       </header>
