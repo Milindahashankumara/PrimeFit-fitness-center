@@ -335,9 +335,7 @@ const CustomerDashboardContent = () => {
               size={32}
             />
             <h3 className="text-xl font-bold mb-1">Messages & Emails</h3>
-            <p className="text-white/80 text-sm">
-              Inbox, sent items, and coach/admin communication
-            </p>
+            <p className="text-white/80 text-sm">Communication with others</p>
           </Link>
 
           <Link

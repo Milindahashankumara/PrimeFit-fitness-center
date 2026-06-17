@@ -1,6 +1,4 @@
 /**
- * Migration Script: Fix Old Bookings
- *
  * This script migrates bookings that have email/string IDs
  * to use proper MongoDB ObjectId references
  */

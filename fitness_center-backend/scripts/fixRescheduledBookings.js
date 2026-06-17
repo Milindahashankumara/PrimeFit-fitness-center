@@ -22,11 +22,11 @@ const fixRescheduledBookings = async () => {
       console.log(`Customer: ${booking.customerName}`);
       console.log(`Current Status: ${booking.status}`);
       console.log(`Date: ${booking.date} at ${booking.time}`);
-      
+
       // These bookings were directly rescheduled without approval
       // They should be converted to pending_reschedule if recent
       const hoursAgo = (Date.now() - new Date(booking.rescheduledAt).getTime()) / (1000 * 60 * 60);
-      
+
       if (hoursAgo < 24) {
         // Recent reschedule - convert to pending approval
         booking.rescheduleRequest = {
@@ -39,15 +39,15 @@ const fixRescheduledBookings = async () => {
         booking.date = booking.originalDate;
         booking.time = booking.originalTime;
         booking.status = 'pending_reschedule';
-        
+
         await booking.save();
-        console.log(`✅ Converted to pending_reschedule - awaiting coach approval`);
+        console.log(`Converted to pending_reschedule - awaiting coach approval`);
       } else {
-        console.log(`⏩ Skipped (older than 24 hours)`);
+        console.log(`Skipped (older than 24 hours)`);
       }
     }
 
-    console.log('\n✅ Migration complete!');
+    console.log('\n Migration complete!');
     process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);
