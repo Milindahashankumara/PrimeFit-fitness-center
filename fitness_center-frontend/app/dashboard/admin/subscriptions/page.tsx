@@ -7,7 +7,6 @@ import {
   AlertCircle,
   BadgeCheck,
   Banknote,
-  Briefcase,
   CircleDollarSign,
   Clock3,
   PauseCircle,
@@ -223,7 +222,6 @@ const AdminSubscriptionsPage = () => {
                   subscription status
                 </p>
               </div>
-              <ShieldAlert className="text-brand-red" size={26} />
             </div>
 
             <div className="overflow-x-auto">
@@ -302,7 +300,6 @@ const AdminSubscriptionsPage = () => {
           <div className="space-y-6">
             <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
-                <Briefcase className="text-brand-red" />
                 <div>
                   <h3 className="text-xl font-bold">Selected customer</h3>
                   <p className="text-sm text-gray-400">
@@ -412,7 +409,6 @@ const AdminSubscriptionsPage = () => {
 
             <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
-                <Banknote className="text-brand-red" />
                 <h3 className="text-xl font-bold">Pending bills</h3>
               </div>
 
@@ -454,7 +450,6 @@ const AdminSubscriptionsPage = () => {
 
         <section className="bg-brand-gray rounded-3xl p-6 border border-white/10">
           <div className="flex items-center gap-3 mb-4">
-            <CircleDollarSign className="text-brand-red" />
             <h3 className="text-xl font-bold">Billing history</h3>
           </div>
           <div className="overflow-x-auto">

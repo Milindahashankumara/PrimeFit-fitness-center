@@ -6,8 +6,8 @@ const AdminCommunicationsPage = () => (
   <CommunicationCenter
     mode="admin"
     allowBroadcast
-    title="Email Management Center"
-    description="Monitor all customer and coach communications, send direct messages, and broadcast announcements."
+    title="Communication Center"
+    description="Monitor all communications, send messages and broadcast announcements."
   />
 );
 

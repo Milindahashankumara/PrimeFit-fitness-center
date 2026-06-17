@@ -342,7 +342,7 @@ const CoachDetailPage = () => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return "Today";
     } else if (diffDays === 1) {
@@ -378,7 +378,7 @@ const CoachDetailPage = () => {
       });
 
       setRatingSubmitted(true);
-      
+
       // Reload coach data and reviews
       await loadCoachData();
       await loadCoachReviews();
@@ -485,7 +485,7 @@ const CoachDetailPage = () => {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {coach.specializations &&
-                    coach.specializations.length > 0 ? (
+                      coach.specializations.length > 0 ? (
                       coach.specializations.map((spec) => (
                         <span
                           key={spec}
@@ -542,16 +542,16 @@ const CoachDetailPage = () => {
                       customerCompletedBookings.length === 0
                         ? "You can only rate a coach after completing a session with them"
                         : unreviewedBookings.length === 0
-                        ? "You have already rated all completed sessions with this coach"
-                        : ""
+                          ? "You have already rated all completed sessions with this coach"
+                          : ""
                     }
                   >
                     <Star size={20} />
                     {customerCompletedBookings.length === 0
                       ? "Rate Coach"
                       : unreviewedBookings.length === 0
-                      ? "Already Rated"
-                      : "Rate Coach"}
+                        ? "Already Rated"
+                        : "Rate Coach"}
                   </button>
                   <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
                     <MessageSquare size={20} />
@@ -564,7 +564,6 @@ const CoachDetailPage = () => {
             {/* Certifications */}
             <div className="bg-brand-gray rounded-2xl p-6 border border-white/10">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Shield className="text-brand-red" size={20} />
                 Certifications
               </h3>
               <div className="space-y-2">
@@ -600,7 +599,6 @@ const CoachDetailPage = () => {
             {/* Performance Stats */}
             <div className="bg-brand-gray rounded-2xl p-6 border border-white/10">
               <h3 className="font-bold text-2xl mb-6 flex items-center gap-2">
-                <TrendingUp className="text-brand-red" size={24} />
                 Performance Stats
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -665,10 +663,10 @@ const CoachDetailPage = () => {
                   coachReviews.map((review: any) => {
                     const initials = review.customerName
                       ? review.customerName
-                          .split(" ")
-                          .map((n: string) => n[0])
-                          .join("")
-                          .toUpperCase()
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
                       : "C";
                     return (
                       <div key={review._id || review.id} className="bg-black/40 p-4 rounded-xl">
@@ -683,11 +681,10 @@ const CoachDetailPage = () => {
                                 {[...Array(5)].map((_, i) => (
                                   <Star
                                     key={i}
-                                    className={`${
-                                      i < review.rating
-                                        ? "text-yellow-400 fill-yellow-400"
-                                        : "text-gray-600"
-                                    }`}
+                                    className={`${i < review.rating
+                                      ? "text-yellow-400 fill-yellow-400"
+                                      : "text-gray-600"
+                                      }`}
                                     size={14}
                                   />
                                 ))}
@@ -772,11 +769,10 @@ const CoachDetailPage = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={() => setSessionType("personal")}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          sessionType === "personal"
-                            ? "border-brand-red bg-brand-red/20"
-                            : "border-white/10 bg-black/40 hover:border-brand-red/50"
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all ${sessionType === "personal"
+                          ? "border-brand-red bg-brand-red/20"
+                          : "border-white/10 bg-black/40 hover:border-brand-red/50"
+                          }`}
                       >
                         <Users
                           className="mx-auto mb-2 text-brand-red"
@@ -789,11 +785,10 @@ const CoachDetailPage = () => {
                       </button>
                       <button
                         onClick={() => setSessionType("group")}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          sessionType === "group"
-                            ? "border-brand-red bg-brand-red/20"
-                            : "border-white/10 bg-black/40 hover:border-brand-red/50"
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all ${sessionType === "group"
+                          ? "border-brand-red bg-brand-red/20"
+                          : "border-white/10 bg-black/40 hover:border-brand-red/50"
+                          }`}
                       >
                         <Users
                           className="mx-auto mb-2 text-brand-red"
@@ -823,13 +818,12 @@ const CoachDetailPage = () => {
                               setSelectedDate(date);
                               setSelectedTimeSlot(null);
                             }}
-                            className={`p-3 rounded-xl text-center transition-all ${
-                              selectedDate.toDateString() === date.toDateString()
-                                ? "bg-brand-red border-2 border-brand-red"
-                                : blocked
-                                  ? "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed text-gray-500"
-                                  : "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
-                            }`}
+                            className={`p-3 rounded-xl text-center transition-all ${selectedDate.toDateString() === date.toDateString()
+                              ? "bg-brand-red border-2 border-brand-red"
+                              : blocked
+                                ? "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed text-gray-500"
+                                : "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
+                              }`}
                           >
                             <p className="text-xs text-gray-400">
                               {getDayName(date)}
@@ -868,13 +862,12 @@ const CoachDetailPage = () => {
                             key={slot.time}
                             disabled={!slot.available}
                             onClick={() => setSelectedTimeSlot(slot)}
-                            className={`p-3 rounded-lg text-center transition-all ${
-                              selectedTimeSlot?.time === slot.time
-                                ? "bg-brand-red border-2 border-brand-red"
-                                : slot.available
-                                  ? "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
-                                  : "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed"
-                            }`}
+                            className={`p-3 rounded-lg text-center transition-all ${selectedTimeSlot?.time === slot.time
+                              ? "bg-brand-red border-2 border-brand-red"
+                              : slot.available
+                                ? "bg-black/40 border-2 border-white/10 hover:border-brand-red/50"
+                                : "bg-black/20 border-2 border-white/5 opacity-40 cursor-not-allowed"
+                              }`}
                           >
                             <Clock size={16} className="mx-auto mb-1" />
                             <p className="font-semibold text-sm">{slot.time}</p>
@@ -998,11 +991,10 @@ const CoachDetailPage = () => {
                         >
                           <Star
                             size={48}
-                            className={`${
-                              star <= (hoverRating || rating)
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-600"
-                            } transition-colors`}
+                            className={`${star <= (hoverRating || rating)
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-gray-600"
+                              } transition-colors`}
                           />
                         </button>
                       ))}
