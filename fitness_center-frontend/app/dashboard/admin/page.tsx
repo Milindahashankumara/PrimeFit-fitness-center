@@ -238,7 +238,6 @@ const AdminDashboard = () => {
         {/* Quick Actions - Grid Style */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Shield className="text-brand-red" />
             Admin Tools
           </h2>
           <div className="grid md:grid-cols-2 xl:grid-cols-6 gap-6">
@@ -310,7 +309,7 @@ const AdminDashboard = () => {
               <div className="w-14 h-14 bg-linear-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Mail className="text-white" size={28} />
               </div>
-              <h3 className="text-lg font-bold mb-2">Email Management</h3>
+              <h3 className="text-lg font-bold mb-2">Communication Management</h3>
               <p className="text-sm text-gray-400 mb-4">
                 View and send all customer and coach communications
               </p>
@@ -362,7 +361,6 @@ const AdminDashboard = () => {
           {/* Recent Activity */}
           <div className="bg-brand-gray p-6 rounded-xl md:col-span-2">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Activity className="text-brand-red" />
               Recent Activity
             </h2>
             <RecentActivity />
@@ -454,13 +452,12 @@ function RecentActivity() {
                       className="bg-white/10 p-3 rounded-lg flex items-start gap-3"
                     >
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                          a.color === "green"
-                            ? "bg-green-500"
-                            : a.color === "red"
-                              ? "bg-red-500"
-                              : "bg-blue-500"
-                        }`}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${a.color === "green"
+                          ? "bg-green-500"
+                          : a.color === "red"
+                            ? "bg-red-500"
+                            : "bg-blue-500"
+                          }`}
                       >
                         <Icon size={16} className="text-white" />
                       </div>
