@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookingsAPI, CoachesAPI } from "@/app/lib/api";
+import { BookingsAPI, CoachesAPI, Feedback, FeedbackAPI } from "@/app/lib/api";
 import {
   ArrowLeft,
   Star,
@@ -82,6 +82,22 @@ const CoachDetailPage = () => {
   const [reviewText, setReviewText] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [coachBookings, setCoachBookings] = useState<any[]>([]);
+  const [coachReviews, setCoachReviews] = useState<Feedback[]>([]);
+
+  const loadCoachReviews = useCallback(async () => {
+    if (!coachId) return;
+    try {
+      const reviews = await FeedbackAPI.getByCoach(coachId);
+      const sorted = (reviews || []).sort(
+        (a, b) =>
+          new Date(b.createdAt || b.submittedDate || 0).getTime() -
+          new Date(a.createdAt || a.submittedDate || 0).getTime()
+      );
+      setCoachReviews(sorted);
+    } catch (e) {
+      console.error("Failed to load coach reviews", e);
+    }
+  }, [coachId]);
 
   const loadCoachBookings = useCallback(async () => {
     if (!coachId) return;
@@ -123,7 +139,8 @@ const CoachDetailPage = () => {
   useEffect(() => {
     loadCoachData();
     loadCoachBookings();
-  }, [loadCoachData, loadCoachBookings]);
+    loadCoachReviews();
+  }, [loadCoachData, loadCoachBookings, loadCoachReviews]);
 
   const getLocalDateString = (date: Date) => {
     const year = date.getFullYear();
@@ -237,6 +254,32 @@ const CoachDetailPage = () => {
     [selectedDate, generateTimeSlots],
   );
 
+  const customerId = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const userData = localStorage.getItem("user");
+    const user = userData ? JSON.parse(userData) : null;
+    return user?.id || user?._id || "";
+  }, []);
+
+  const customerCompletedBookings = useMemo(() => {
+    if (!customerId) return [];
+    return coachBookings.filter(
+      (b: any) =>
+        b.status === "completed" &&
+        ((b.customerId?._id || b.customerId) === customerId)
+    );
+  }, [coachBookings, customerId]);
+
+  const reviewedBookingIds = useMemo(() => {
+    return coachReviews.map((r: any) => r.sessionId?._id || r.sessionId || r.bookingId);
+  }, [coachReviews]);
+
+  const unreviewedBookings = useMemo(() => {
+    return customerCompletedBookings.filter(
+      (b: any) => !reviewedBookingIds.includes(b._id || b.id)
+    );
+  }, [customerCompletedBookings, reviewedBookingIds]);
+
   const handleBooking = async () => {
     if (!selectedTimeSlot || !coach) return;
 
@@ -293,14 +336,62 @@ const CoachDetailPage = () => {
     return date.toDateString() === today.toDateString();
   };
 
-  const handleRatingSubmit = () => {
-    setRatingSubmitted(true);
-    setTimeout(() => {
-      setShowRatingModal(false);
-      setRatingSubmitted(false);
-      setRating(0);
-      setReviewText("");
-    }, 2000);
+  const getRelativeTimeString = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return "Today";
+    } else if (diffDays === 1) {
+      return "Yesterday";
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+    } else {
+      const months = Math.floor(diffDays / 30);
+      return `${months} month${months > 1 ? "s" : ""} ago`;
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (rating === 0 || !coach) return;
+    const bookingToRate = unreviewedBookings[0];
+    const bookingId = bookingToRate?._id || bookingToRate?.id;
+    if (!bookingId) {
+      alert("No completed booking found to rate.");
+      return;
+    }
+
+    try {
+      await FeedbackAPI.create({
+        sessionId: bookingId,
+        coachId: coach._id || coach.id || coachId,
+        coachName: coach.name,
+        rating,
+        feedback: reviewText,
+        status: "approved",
+      });
+
+      setRatingSubmitted(true);
+      
+      // Reload coach data and reviews
+      await loadCoachData();
+      await loadCoachReviews();
+
+      setTimeout(() => {
+        setShowRatingModal(false);
+        setRatingSubmitted(false);
+        setRating(0);
+        setReviewText("");
+      }, 2000);
+    } catch (error) {
+      alert(getErrorMessage(error, "Failed to submit rating. Please try again."));
+    }
   };
 
   if (loading) {
@@ -444,11 +535,23 @@ const CoachDetailPage = () => {
                     Book Session Now
                   </button>
                   <button
+                    disabled={unreviewedBookings.length === 0}
                     onClick={() => setShowRatingModal(true)}
-                    className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      customerCompletedBookings.length === 0
+                        ? "You can only rate a coach after completing a session with them"
+                        : unreviewedBookings.length === 0
+                        ? "You have already rated all completed sessions with this coach"
+                        : ""
+                    }
                   >
                     <Star size={20} />
-                    Rate Coach
+                    {customerCompletedBookings.length === 0
+                      ? "Rate Coach"
+                      : unreviewedBookings.length === 0
+                      ? "Already Rated"
+                      : "Rate Coach"}
                   </button>
                   <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
                     <MessageSquare size={20} />
@@ -556,34 +659,52 @@ const CoachDetailPage = () => {
             <div className="bg-brand-gray rounded-2xl p-6 border border-white/10">
               <h3 className="font-bold text-2xl mb-6">Client Reviews</h3>
               <div className="space-y-4">
-                {[1, 2, 3].map((review) => (
-                  <div key={review} className="bg-black/40 p-4 rounded-xl">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center font-bold">
-                          J{review}
-                        </div>
-                        <div>
-                          <p className="font-semibold">John Doe {review}</p>
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className="text-yellow-400 fill-yellow-400"
-                                size={14}
-                              />
-                            ))}
+                {coachReviews.length === 0 ? (
+                  <p className="text-gray-400 text-center py-6">No reviews yet.</p>
+                ) : (
+                  coachReviews.map((review: any) => {
+                    const initials = review.customerName
+                      ? review.customerName
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "C";
+                    return (
+                      <div key={review._id || review.id} className="bg-black/40 p-4 rounded-xl">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-brand-red rounded-full flex items-center justify-center font-bold text-white">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{review.customerName || "Customer"}</p>
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`${
+                                      i < review.rating
+                                        ? "text-yellow-400 fill-yellow-400"
+                                        : "text-gray-600"
+                                    }`}
+                                    size={14}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
+                          <span className="text-xs text-gray-400">
+                            {getRelativeTimeString(review.createdAt || review.submittedDate)}
+                          </span>
                         </div>
+                        <p className="text-sm text-gray-300">
+                          {review.feedback}
+                        </p>
                       </div>
-                      <span className="text-xs text-gray-400">2 weeks ago</span>
-                    </div>
-                    <p className="text-sm text-gray-300">
-                      Excellent coach! Very professional and motivating. Helped
-                      me achieve my goals faster than expected.
-                    </p>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
