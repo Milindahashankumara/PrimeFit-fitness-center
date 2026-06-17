@@ -111,9 +111,14 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  availability: {
-    type: String
-  },
+  availability: [{
+    id: String,
+    day: String,
+    startTime: String,
+    endTime: String,
+    sessionType: String,
+    isRecurring: Boolean
+  }],
   blockedDates: [{
     id: {
       type: String,

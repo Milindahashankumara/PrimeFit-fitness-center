@@ -42,6 +42,7 @@ interface Coach {
   achievements?: string[];
   coachStatus?: string;
   blockedDates?: { id: string; date: string; reason: string }[];
+  availability?: any;
 }
 
 interface CustomerUser {
@@ -80,6 +81,17 @@ const CoachDetailPage = () => {
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [coachBookings, setCoachBookings] = useState<any[]>([]);
+
+  const loadCoachBookings = useCallback(async () => {
+    if (!coachId) return;
+    try {
+      const bookings = await BookingsAPI.getByCoach(coachId);
+      setCoachBookings(bookings || []);
+    } catch (e) {
+      console.error("Failed to load coach bookings", e);
+    }
+  }, [coachId]);
 
   const loadCoachData = useCallback(async () => {
     try {
@@ -110,7 +122,8 @@ const CoachDetailPage = () => {
 
   useEffect(() => {
     loadCoachData();
-  }, [loadCoachData]);
+    loadCoachBookings();
+  }, [loadCoachData, loadCoachBookings]);
 
   const getLocalDateString = (date: Date) => {
     const year = date.getFullYear();
@@ -135,36 +148,93 @@ const CoachDetailPage = () => {
     return dates;
   };
 
-  const generateTimeSlots = (date: Date): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    const hours = [
-      "09:00",
-      "10:00",
-      "11:00",
-      "12:00",
-      "14:00",
-      "15:00",
-      "16:00",
-      "17:00",
-      "18:00",
-      "19:00",
-    ];
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
 
-    hours.forEach((time) => {
-      slots.push({
-        time,
-        available: true,
-        date: getLocalDateString(date),
+  const minutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+  };
+
+  const generateHourlySlots = (startTime: string, endTime: string, durationMinutes: number) => {
+    const list: string[] = [];
+    let current = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+    while (current + durationMinutes <= end) {
+      list.push(minutesToTime(current));
+      current += 60;
+    }
+    return list;
+  };
+
+  const bookedSlots = useMemo(() => {
+    const dateStr = getLocalDateString(selectedDate);
+    const activeStatuses = ["pending", "accepted", "rescheduled", "pending_reschedule"];
+    return coachBookings
+      .filter((b: any) => b.date === dateStr && activeStatuses.includes(b.status))
+      .map((b: any) => b.time);
+  }, [coachBookings, selectedDate]);
+
+  const generateTimeSlots = useCallback((date: Date): TimeSlot[] => {
+    if (!coach) return [];
+
+    let slots = coach.availability;
+    if (typeof slots === "string") {
+      try {
+        slots = JSON.parse(slots);
+      } catch (e) {
+        slots = [];
+      }
+    }
+    if (!Array.isArray(slots)) {
+      slots = [];
+    }
+
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const weekdayName = weekdays[date.getDay()];
+
+    const daySlots = slots.filter((s: any) => s && s.day === weekdayName && s.startTime && s.endTime);
+    const generatedTimes: string[] = [];
+
+    daySlots.forEach((slot: any) => {
+      const windowTimes = generateHourlySlots(slot.startTime, slot.endTime, 60);
+      windowTimes.forEach((t) => {
+        if (!generatedTimes.includes(t)) {
+          generatedTimes.push(t);
+        }
       });
     });
 
-    return slots;
-  };
+    generatedTimes.sort((a, b) => a.localeCompare(b));
+
+    const dateStr = getLocalDateString(date);
+
+    return generatedTimes.map((time) => {
+      const isBooked = bookedSlots.includes(time);
+      return {
+        time,
+        available: !isBooked,
+        date: dateStr,
+      };
+    });
+  }, [coach, bookedSlots]);
 
   const dates = useMemo(() => generateDates(), []);
   const timeSlots = useMemo(
     () => generateTimeSlots(selectedDate),
-    [selectedDate],
+    [selectedDate, generateTimeSlots],
   );
 
   const handleBooking = async () => {
@@ -666,6 +736,10 @@ const CoachDetailPage = () => {
                         <div className="col-span-full py-6 text-center text-red-400 bg-red-500/10 rounded-xl border border-red-500/20">
                           <p className="font-bold mb-1">Coach Unavailable</p>
                           <p className="text-xs text-gray-400">This date has been blocked by the coach.</p>
+                        </div>
+                      ) : timeSlots.length === 0 ? (
+                        <div className="col-span-full py-6 text-center text-gray-400 bg-black/20 rounded-xl border border-white/5">
+                          <p className="font-bold">No available sessions</p>
                         </div>
                       ) : (
                         timeSlots.map((slot) => (
