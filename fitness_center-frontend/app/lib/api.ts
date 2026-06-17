@@ -475,6 +475,8 @@ export interface Feedback {
   reviewedDate?: string;
   reviewedBy?: string;
   rejectionReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SubscriptionBill {
