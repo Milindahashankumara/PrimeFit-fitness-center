@@ -169,6 +169,7 @@ exports.updateCoach = async (req, res) => {
       "hourlyRate",
       "experience",
       "availability",
+      "blockedDates",
     ];
 
     allowedUpdates.forEach((field) => {

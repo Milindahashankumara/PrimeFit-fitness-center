@@ -329,11 +329,10 @@ const CustomerFeedbackPage = () => {
         <div className="flex gap-2 mb-8 bg-brand-gray p-2 rounded-xl border border-white/10">
           <button
             onClick={() => setActiveTab("submit")}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
-              activeTab === "submit"
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${activeTab === "submit"
                 ? "bg-brand-red text-white"
                 : "text-gray-400 hover:text-white"
-            }`}
+              }`}
           >
             <Send size={18} />
             Submit Feedback
@@ -345,11 +344,10 @@ const CustomerFeedbackPage = () => {
           </button>
           <button
             onClick={() => setActiveTab("history")}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
-              activeTab === "history"
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${activeTab === "history"
                 ? "bg-brand-red text-white"
                 : "text-gray-400 hover:text-white"
-            }`}
+              }`}
           >
             <MessageSquare size={18} />
             My Feedback
@@ -375,7 +373,6 @@ const CustomerFeedbackPage = () => {
                   <p className="text-sm text-gray-300">
                     Your feedback helps us maintain high-quality coaching
                     standards and helps other customers make informed decisions.
-                    All feedback is reviewed before being published.
                   </p>
                 </div>
               </div>
@@ -409,11 +406,10 @@ const CustomerFeedbackPage = () => {
                     <button
                       key={session.id}
                       onClick={() => setSelectedSession(session.id)}
-                      className={`w-full p-4 rounded-lg border transition-all ${
-                        selectedSession === session.id
+                      className={`w-full p-4 rounded-lg border transition-all ${selectedSession === session.id
                           ? "border-brand-red bg-brand-red/10"
                           : "border-white/10 bg-black/40 hover:border-white/20"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 text-left">
@@ -476,11 +472,10 @@ const CustomerFeedbackPage = () => {
                       >
                         <Star
                           size={40}
-                          className={`${
-                            star <= (hoverRating || rating)
+                          className={`${star <= (hoverRating || rating)
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-gray-600"
-                          } transition-colors`}
+                            } transition-colors`}
                         />
                       </button>
                     ))}

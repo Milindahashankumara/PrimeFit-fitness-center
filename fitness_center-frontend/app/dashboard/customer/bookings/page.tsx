@@ -344,6 +344,7 @@ const BookingsPage = () => {
             ? {
                 ...booking,
                 ...updatedBooking,
+                id: booking.id,
                 status: "pending_reschedule",
               }
             : booking,

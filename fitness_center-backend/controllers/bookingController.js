@@ -229,6 +229,28 @@ exports.createBooking = async (req, res) => {
       customerEmail,
     } = req.body;
 
+    // Fetch the coach to verify blocked dates
+    const coach = await User.findOne({ _id: coachId, role: "coach" });
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: "Coach not found",
+      });
+    }
+
+    // Check if the requested date is blocked
+    if (coach.blockedDates && coach.blockedDates.length > 0) {
+      const isBlocked = coach.blockedDates.some(
+        (blocked) => blocked.date === date
+      );
+      if (isBlocked) {
+        return res.status(400).json({
+          success: false,
+          message: "The coach has blocked this date and is not available for bookings.",
+        });
+      }
+    }
+
     // Create booking data
     const bookingData = {
       customerId: customerId || req.user.id,

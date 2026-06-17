@@ -54,10 +54,11 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 export interface Booking {
   _id?: string; // MongoDB ID
   id?: string; // Alias for compatibility
-  customerId: string;
+  customerId: any;
   customerName: string;
   customerEmail: string;
-  coachId: string;
+  coachId: any;
+  coach?: any;
   coachName: string;
   date: string;
   time: string;
@@ -91,6 +92,7 @@ export interface Booking {
   cancellationReason?: string;
   cancelledAt?: string;
   cancelledBy?: "customer" | "coach" | "admin";
+  [key: string]: any;
 }
 
 export interface Complaint {
@@ -1061,7 +1063,8 @@ export interface Coach {
   rating?: number;
   reviewCount?: number;
   activeClients?: number;
-  availability?: any[];
+  availability?: any;
+  blockedDates?: { id: string; date: string; reason: string }[];
   rejectionReason?: string;
 }
 

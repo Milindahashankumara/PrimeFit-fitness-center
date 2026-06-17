@@ -114,6 +114,20 @@ const userSchema = new mongoose.Schema({
   availability: {
     type: String
   },
+  blockedDates: [{
+    id: {
+      type: String,
+      required: true
+    },
+    date: {
+      type: String,
+      required: true
+    },
+    reason: {
+      type: String,
+      required: true
+    }
+  }],
   isAuthenticated: {
     type: Boolean,
     default: true
