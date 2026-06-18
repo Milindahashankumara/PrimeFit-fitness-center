@@ -123,6 +123,265 @@ const sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
   });
 };
 
+const buildBookingEmailTemplate = ({ recipientName, title, messageLines, bookingDetails, status, actionUrl, actionText }) => {
+  const detailsHtml = bookingDetails.map(d => `
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+      <td style="padding: 10px 0; color: #a0a0a0; width: 150px; font-weight: 600;">${d.label}:</td>
+      <td style="padding: 10px 0; color: #ffffff;">${d.value}</td>
+    </tr>
+  `).join('');
+
+  return `
+  <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0c10; color: #ffffff; padding: 40px 10px; margin: 0;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #1f2833; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <!-- Logo Header -->
+      <div style="background-color: #0b0c10; border-bottom: 2px solid #ff4d4d; padding: 25px; text-align: center;">
+        <span style="color: #ff4d4d; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">PrimeFit</span>
+      </div>
+      
+      <!-- Content Body -->
+      <div style="padding: 30px 24px;">
+        <h2 style="margin-top: 0; margin-bottom: 15px; color: #ffffff; font-size: 20px; font-weight: 600;">Hello ${recipientName},</h2>
+        <p style="color: #c5c6c7; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+          ${messageLines.join('<br/>')}
+        </p>
+        
+        <!-- Table Card -->
+        <div style="background-color: #0b0c10; border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 25px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tbody>
+              ${detailsHtml}
+              <tr>
+                <td style="padding: 10px 0; color: #a0a0a0; font-weight: 600;">Status:</td>
+                <td style="padding: 10px 0;">
+                  <span style="background-color: ${status === 'Cancelled' ? 'rgba(255,77,77,0.15)' : 'rgba(255,176,32,0.15)'}; color: ${status === 'Cancelled' ? '#ff4d4d' : '#ffb020'}; border: 1px solid ${status === 'Cancelled' ? '#ff4d4d' : '#ffb020'}; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                    ${status}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        ${actionUrl ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${actionUrl}" style="display: inline-block; background-color: #ff4d4d; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; transition: background-color 0.2s;">
+            ${actionText}
+          </a>
+        </div>
+        ` : ''}
+        
+        <!-- Divider -->
+        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 30px 0 20px 0;" />
+        
+        <!-- Footer Thank You -->
+        <p style="margin: 0; color: #888888; font-size: 13px; line-height: 1.5; text-align: center;">
+          Thank you for choosing <strong>PrimeFit</strong>.<br/>
+          This is an automated notification. Please do not reply directly to this email.
+        </p>
+      </div>
+    </div>
+  </div>
+  `;
+};
+
+const sendCustomerCancellationEmail = async (booking, cancellationReason) => {
+  if (!booking) throw new Error("Booking exists check failed: Booking is required");
+  
+  const User = require("../models/User");
+  const [coach, customer] = await Promise.all([
+    User.findById(booking.coachId),
+    User.findById(booking.customerId)
+  ]);
+  
+  if (!coach) throw new Error("Coach exists check failed: Coach not found");
+  if (!customer) throw new Error("Customer exists check failed: Customer not found");
+  
+  const recipientEmail = coach.email;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    throw new Error("Recipient email address is invalid");
+  }
+
+  const appUrl = process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+  
+  const messageLines = [
+    `Greeting! We are writing to inform you that your client, <strong>${customer.name}</strong>, has cancelled their booking.`,
+    `Below are the details of the cancelled session.`
+  ];
+
+  const bookingDetails = [
+    { label: "Customer Name", value: customer.name },
+    { label: "Coach Name", value: coach.name },
+    { label: "Session Date", value: booking.date },
+    { label: "Session Time", value: booking.time },
+    { label: "Session Type", value: booking.sessionType || booking.type || "personal" }
+  ];
+
+  if (cancellationReason) {
+    bookingDetails.push({ label: "Cancellation Reason", value: cancellationReason });
+  }
+
+  const html = buildBookingEmailTemplate({
+    recipientName: coach.name,
+    title: "Booking Cancelled by Customer",
+    messageLines,
+    bookingDetails,
+    status: "Cancelled",
+    actionUrl: `${appUrl}/dashboard/coach/requests`,
+    actionText: "View Coach Dashboard"
+  });
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: "Booking Cancelled by Customer",
+    html
+  });
+};
+
+const sendCustomerRescheduleEmail = async (booking, oldDate, oldTime, newDate, newTime) => {
+  if (!booking) throw new Error("Booking exists check failed: Booking is required");
+  
+  const User = require("../models/User");
+  const [coach, customer] = await Promise.all([
+    User.findById(booking.coachId),
+    User.findById(booking.customerId)
+  ]);
+  
+  if (!coach) throw new Error("Coach exists check failed: Coach not found");
+  if (!customer) throw new Error("Customer exists check failed: Customer not found");
+  
+  const recipientEmail = coach.email;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    throw new Error("Recipient email address is invalid");
+  }
+
+  const appUrl = process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+  
+  const messageLines = [
+    `Greeting! We are writing to inform you that your client, <strong>${customer.name}</strong>, has requested to reschedule their session.`,
+    `Please review the request details below.`
+  ];
+
+  const bookingDetails = [
+    { label: "Customer Name", value: customer.name },
+    { label: "Old Date & Time", value: `${oldDate} at ${oldTime}` },
+    { label: "New Date & Time", value: `${newDate} at ${newTime}` },
+    { label: "Session Type", value: booking.sessionType || booking.type || "personal" }
+  ];
+
+  const html = buildBookingEmailTemplate({
+    recipientName: coach.name,
+    title: "Booking Rescheduled by Customer",
+    messageLines,
+    bookingDetails,
+    status: "Reschedule Pending",
+    actionUrl: `${appUrl}/dashboard/coach/requests`,
+    actionText: "Review Reschedule Request"
+  });
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: "Booking Rescheduled by Customer",
+    html
+  });
+};
+
+const sendCoachCancellationEmail = async (booking) => {
+  if (!booking) throw new Error("Booking exists check failed: Booking is required");
+  
+  const User = require("../models/User");
+  const [coach, customer] = await Promise.all([
+    User.findById(booking.coachId),
+    User.findById(booking.customerId)
+  ]);
+  
+  if (!coach) throw new Error("Coach exists check failed: Coach not found");
+  if (!customer) throw new Error("Customer exists check failed: Customer not found");
+  
+  const recipientEmail = customer.email || booking.customerEmail;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    throw new Error("Recipient email address is invalid");
+  }
+
+  const appUrl = process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+  
+  const messageLines = [
+    `We regret to inform you that coach <strong>${coach.name}</strong> has cancelled your scheduled training session.`,
+    `Please see the details of the cancelled session below.`
+  ];
+
+  const bookingDetails = [
+    { label: "Coach Name", value: coach.name },
+    { label: "Session Date", value: booking.date },
+    { label: "Session Time", value: booking.time },
+    { label: "Session Type", value: booking.sessionType || booking.type || "personal" }
+  ];
+
+  const html = buildBookingEmailTemplate({
+    recipientName: customer.name,
+    title: "Your Training Session Has Been Cancelled",
+    messageLines,
+    bookingDetails,
+    status: "Cancelled",
+    actionUrl: `${appUrl}/dashboard/customer/bookings`,
+    actionText: "View My Bookings"
+  });
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: "Your Training Session Has Been Cancelled",
+    html
+  });
+};
+
+const sendCoachRescheduleEmail = async (booking, oldDate, oldTime, newDate, newTime) => {
+  if (!booking) throw new Error("Booking exists check failed: Booking is required");
+  
+  const User = require("../models/User");
+  const [coach, customer] = await Promise.all([
+    User.findById(booking.coachId),
+    User.findById(booking.customerId)
+  ]);
+  
+  if (!coach) throw new Error("Coach exists check failed: Coach not found");
+  if (!customer) throw new Error("Customer exists check failed: Customer not found");
+  
+  const recipientEmail = customer.email || booking.customerEmail;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    throw new Error("Recipient email address is invalid");
+  }
+
+  const appUrl = process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+  
+  const messageLines = [
+    `We are writing to confirm that coach <strong>${coach.name}</strong> has updated/rescheduled your training session.`,
+    `Below are the updated session details.`
+  ];
+
+  const bookingDetails = [
+    { label: "Coach Name", value: coach.name },
+    { label: "Old Date & Time", value: `${oldDate} at ${oldTime}` },
+    { label: "New Date & Time", value: `${newDate} at ${newTime}` },
+    { label: "Session Type", value: booking.sessionType || booking.type || "personal" }
+  ];
+
+  const html = buildBookingEmailTemplate({
+    recipientName: customer.name,
+    title: "Your Training Session Has Been Rescheduled",
+    messageLines,
+    bookingDetails,
+    status: "Rescheduled",
+    actionUrl: `${appUrl}/dashboard/customer/bookings`,
+    actionText: "View My Bookings"
+  });
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: "Your Training Session Has Been Rescheduled",
+    html
+  });
+};
+
 module.exports = {
   sendEmail,
   buildMessageEmail,
@@ -130,4 +389,8 @@ module.exports = {
   buildBookingCancellationEmailToCoach,
   buildBookingCancellationEmailToCustomer,
   isEmailConfigured,
+  sendCustomerCancellationEmail,
+  sendCustomerRescheduleEmail,
+  sendCoachCancellationEmail,
+  sendCoachRescheduleEmail,
 };
