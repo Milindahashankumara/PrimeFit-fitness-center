@@ -267,16 +267,39 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check if the requested date is blocked
+    // Check if the requested date has any blocks (full-day or partial time-slot)
     if (coach.blockedDates && coach.blockedDates.length > 0) {
-      const isBlocked = coach.blockedDates.some(
-        (blocked) => blocked.date === date
+      // 1. Check for full-day block
+      const hasFullDayBlock = coach.blockedDates.some(
+        (blocked) => blocked.date === date && (blocked.blockType === "full-day" || !blocked.blockType)
       );
-      if (isBlocked) {
+      if (hasFullDayBlock) {
         return res.status(400).json({
           success: false,
           message: "The coach has blocked this date and is not available for bookings.",
         });
+      }
+
+      // 2. Check for time-slot block overlap
+      const timeSlotBlocks = coach.blockedDates.filter(
+        (blocked) => blocked.date === date && blocked.blockType === "time-slot"
+      );
+      if (timeSlotBlocks.length > 0) {
+        const bookingStart = timeToMinutes(time);
+        const bookingEnd = bookingStart + (duration || 60);
+
+        const isOverlapping = timeSlotBlocks.some((blocked) => {
+          const blockStart = timeToMinutes(blocked.startTime);
+          const blockEnd = timeToMinutes(blocked.endTime);
+          return bookingStart < blockEnd && bookingEnd > blockStart;
+        });
+
+        if (isOverlapping) {
+          return res.status(400).json({
+            success: false,
+            message: "The requested time slot overlaps with a blocked time range.",
+          });
+        }
       }
     }
 

@@ -41,7 +41,14 @@ interface Coach {
   certifications?: string[];
   achievements?: string[];
   coachStatus?: string;
-  blockedDates?: { id: string; date: string; reason: string }[];
+  blockedDates?: {
+    id: string;
+    date: string;
+    reason: string;
+    blockType?: string;
+    startTime?: string;
+    endTime?: string;
+  }[];
   availability?: any;
 }
 
@@ -152,7 +159,7 @@ const CoachDetailPage = () => {
   const isDateBlocked = useCallback((date: Date) => {
     if (!coach || !coach.blockedDates) return false;
     const dateStr = getLocalDateString(date);
-    return coach.blockedDates.some((b: any) => b.date === dateStr);
+    return coach.blockedDates.some((b: any) => b.date === dateStr && (b.blockType === "full-day" || !b.blockType));
   }, [coach]);
 
   const generateDates = () => {
@@ -238,7 +245,23 @@ const CoachDetailPage = () => {
 
     const dateStr = getLocalDateString(date);
 
-    return generatedTimes.map((time) => {
+    // Filter out times blocked by time-slot blocks on this date
+    const timeSlotBlocks = (coach.blockedDates || []).filter(
+      (b: any) => b.date === dateStr && b.blockType === "time-slot"
+    );
+
+    const nonBlockedTimes = generatedTimes.filter((timeStr) => {
+      const slotStart = timeToMinutes(timeStr);
+      const slotEnd = slotStart + 60; // 60 mins duration
+      const isBlocked = timeSlotBlocks.some((blocked) => {
+        const blockStart = timeToMinutes(blocked.startTime || "");
+        const blockEnd = timeToMinutes(blocked.endTime || "");
+        return slotStart < blockEnd && slotEnd > blockStart;
+      });
+      return !isBlocked;
+    });
+
+    return nonBlockedTimes.map((time) => {
       const isBooked = bookedSlots.includes(time);
       return {
         time,
