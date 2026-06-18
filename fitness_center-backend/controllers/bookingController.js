@@ -6,6 +6,10 @@ const {
   sendEmail,
   buildBookingCancellationEmailToCoach,
   buildBookingCancellationEmailToCustomer,
+  sendCustomerCancellationEmail,
+  sendCustomerRescheduleEmail,
+  sendCoachCancellationEmail,
+  sendCoachRescheduleEmail,
 } = require("../services/emailService");
 
 const ACTIVE_BOOKING_STATUSES = [
@@ -63,45 +67,6 @@ const handleBookingCancellation = async (booking) => {
     actionUrl: `${appUrl}/dashboard/customer/bookings`,
   });
   emitToUser(customerId, "notification:received", customerNotification);
-
-  const [coach, customer] = await Promise.all([
-    User.findById(coachId).select("email name"),
-    User.findById(customerId).select("email name"),
-  ]);
-
-  const coachEmail = coach?.email;
-  const customerEmail = customer?.email || booking.customerEmail;
-
-  if (coachEmail) {
-    await sendEmail({
-      to: coachEmail,
-      subject: `Session cancelled by ${booking.customerName}`,
-      text: `${booking.customerName} cancelled their session on ${sessionDetails}.${reasonText}`,
-      html: buildBookingCancellationEmailToCoach({
-        customerName: booking.customerName,
-        sessionType: booking.sessionType,
-        date: formatBookingDate(booking.date),
-        time: booking.time,
-        cancellationReason: booking.cancellationReason,
-        appUrl,
-      }),
-    });
-  }
-
-  if (customerEmail) {
-    await sendEmail({
-      to: customerEmail,
-      subject: `Your session with ${booking.coachName} has been cancelled`,
-      text: `Your session with ${booking.coachName} on ${sessionDetails} has been cancelled.`,
-      html: buildBookingCancellationEmailToCustomer({
-        coachName: booking.coachName,
-        sessionType: booking.sessionType,
-        date: formatBookingDate(booking.date),
-        time: booking.time,
-        appUrl,
-      }),
-    });
-  }
 };
 
 // Get all bookings (with filters)
@@ -492,6 +457,51 @@ exports.updateBooking = async (req, res) => {
       };
       handleBookingCancellation(cancellationBooking).catch((error) => {
         console.error("Failed to process booking cancellation side effects:", error);
+      });
+
+      // Trigger cancellation emails
+      if (req.user.role === "customer" || updatedBooking.cancelledBy === "customer") {
+        sendCustomerCancellationEmail(updatedBooking, updatedBooking.cancellationReason).catch((error) => {
+          console.error("Failed to send customer cancellation email:", error);
+        });
+      } else if (req.user.role === "coach" || updatedBooking.cancelledBy === "coach") {
+        sendCoachCancellationEmail(updatedBooking).catch((error) => {
+          console.error("Failed to send coach cancellation email:", error);
+        });
+      }
+    }
+
+    // Customer reschedules (requests reschedule)
+    if (
+      updatedBooking &&
+      updatedBooking.status === "pending_reschedule" &&
+      booking.status !== "pending_reschedule"
+    ) {
+      const oldDate = booking.date;
+      const oldTime = booking.time;
+      const newDate = updatedBooking.rescheduleRequest?.requestedDate || "";
+      const newTime = updatedBooking.rescheduleRequest?.requestedTime || "";
+
+      sendCustomerRescheduleEmail(updatedBooking, oldDate, oldTime, newDate, newTime).catch((error) => {
+        console.error("Failed to send customer reschedule email:", error);
+      });
+    }
+
+    // Coach reschedules (approves reschedule or reschedules directly)
+    if (
+      updatedBooking &&
+      updatedBooking.status === "rescheduled" &&
+      (booking.status !== "rescheduled" ||
+        booking.date !== updatedBooking.date ||
+        booking.time !== updatedBooking.time)
+    ) {
+      const oldDate = booking.date;
+      const oldTime = booking.time;
+      const newDate = updatedBooking.date;
+      const newTime = updatedBooking.time;
+
+      sendCoachRescheduleEmail(updatedBooking, oldDate, oldTime, newDate, newTime).catch((error) => {
+        console.error("Failed to send coach reschedule email:", error);
       });
     }
 
