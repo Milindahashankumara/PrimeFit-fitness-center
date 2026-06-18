@@ -16,10 +16,3 @@ npm run start
 npm install
 npm run dev
 ```
-
-4. If you use Docker, run the root `docker-compose.yml` to start the frontend, backend, and database together.
-
-Environment variables
-
-- `fitness_center-backend/.env.example` contains the backend variables for local use.
-- `fitness_center-frontend` uses `NEXT_PUBLIC_API_URL` for the API base URL.
