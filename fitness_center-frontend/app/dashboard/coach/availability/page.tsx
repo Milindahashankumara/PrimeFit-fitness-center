@@ -13,6 +13,7 @@ import {
   Copy,
   Trash2,
   AlertCircle,
+  Edit,
 } from "lucide-react";
 import { AuthAPI, CoachesAPI } from "@/app/lib/api";
 
@@ -29,6 +30,9 @@ interface BlockedDate {
   id: string;
   date: string;
   reason: string;
+  blockType?: "full-day" | "time-slot";
+  startTime?: string;
+  endTime?: string;
 }
 
 const AvailabilityPage = () => {
@@ -36,16 +40,13 @@ const AvailabilityPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddSlot, setShowAddSlot] = useState(false);
   const [showBlockDate, setShowBlockDate] = useState(false);
-  const idCounterRef = useRef(100);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [coachId, setCoachId] = useState<string>("");
 
   const nextId = () => {
-    const nextValue = idCounterRef.current;
-    idCounterRef.current += 1;
-    return String(nextValue);
+    return Math.random().toString(36).substring(2, 9);
   };
 
   const daysOfWeek = [
@@ -114,7 +115,15 @@ const AvailabilityPage = () => {
     { id: "2", date: "2026-02-14", reason: "Personal Day" },
   ]);
 
-  const [newSlot, setNewSlot] = useState<Omit<TimeSlot, "id">>({
+  const [newSlot, setNewSlot] = useState<{
+    id?: string;
+    day: string;
+    startTime: string;
+    endTime: string;
+    sessionType: "personal" | "group" | "online";
+    isRecurring: boolean;
+  }>({
+    id: "",
     day: "Monday",
     startTime: "09:00",
     endTime: "17:00",
@@ -122,9 +131,20 @@ const AvailabilityPage = () => {
     isRecurring: true,
   });
 
-  const [newBlockedDate, setNewBlockedDate] = useState({
+  const [newBlockedDate, setNewBlockedDate] = useState<{
+    id?: string;
+    date: string;
+    reason: string;
+    blockType: "full-day" | "time-slot";
+    startTime?: string;
+    endTime?: string;
+  }>({
+    id: "",
     date: "",
     reason: "",
+    blockType: "full-day",
+    startTime: "",
+    endTime: "",
   });
 
   const loadCoachData = useCallback(async () => {
@@ -190,14 +210,56 @@ const AvailabilityPage = () => {
     }
   };
 
+  const handleEditSlot = (slot: TimeSlot) => {
+    setNewSlot({
+      id: slot.id,
+      day: slot.day,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      sessionType: slot.sessionType,
+      isRecurring: slot.isRecurring,
+    });
+    setShowAddSlot(true);
+  };
+
   const handleAddSlot = () => {
-    const slot: TimeSlot = {
-      ...newSlot,
-      id: nextId(),
-    };
-    setAvailabilitySlots([...availabilitySlots, slot]);
+    if (newSlot.startTime >= newSlot.endTime) {
+      alert("Start time must be before end time");
+      return;
+    }
+
+    if (newSlot.id) {
+      // Edit existing
+      setAvailabilitySlots(
+        availabilitySlots.map((slot) =>
+          slot.id === newSlot.id
+            ? ({
+                id: newSlot.id,
+                day: newSlot.day,
+                startTime: newSlot.startTime,
+                endTime: newSlot.endTime,
+                sessionType: newSlot.sessionType,
+                isRecurring: newSlot.isRecurring,
+              } as TimeSlot)
+            : slot
+        )
+      );
+    } else {
+      // Add new
+      const slot: TimeSlot = {
+        id: nextId(),
+        day: newSlot.day,
+        startTime: newSlot.startTime,
+        endTime: newSlot.endTime,
+        sessionType: newSlot.sessionType,
+        isRecurring: newSlot.isRecurring,
+      };
+      setAvailabilitySlots([...availabilitySlots, slot]);
+    }
+
     setShowAddSlot(false);
     setNewSlot({
+      id: "",
       day: "Monday",
       startTime: "09:00",
       endTime: "17:00",
@@ -220,15 +282,62 @@ const AvailabilityPage = () => {
     setAvailabilitySlots([...availabilitySlots, newSlot]);
   };
 
+  const handleEditBlockedDate = (blocked: BlockedDate) => {
+    setNewBlockedDate({
+      id: blocked.id,
+      date: blocked.date,
+      reason: blocked.reason,
+      blockType: blocked.blockType || "full-day",
+      startTime: blocked.startTime || "",
+      endTime: blocked.endTime || "",
+    });
+    setShowBlockDate(true);
+  };
+
   const handleAddBlockedDate = () => {
     if (newBlockedDate.date && newBlockedDate.reason) {
-      const blocked: BlockedDate = {
-        ...newBlockedDate,
-        id: nextId(),
-      };
-      setBlockedDates([...blockedDates, blocked]);
+      if (newBlockedDate.blockType === "time-slot") {
+        if (!newBlockedDate.startTime || !newBlockedDate.endTime) {
+          alert("Please select start and end times");
+          return;
+        }
+        if (newBlockedDate.startTime >= newBlockedDate.endTime) {
+          alert("Start time must be before end time");
+          return;
+        }
+      }
+
+      if (newBlockedDate.id) {
+        // Edit existing
+        setBlockedDates(
+          blockedDates.map((b) =>
+            b.id === newBlockedDate.id
+              ? ({
+                  id: newBlockedDate.id,
+                  date: newBlockedDate.date,
+                  reason: newBlockedDate.reason,
+                  blockType: newBlockedDate.blockType,
+                  startTime: newBlockedDate.blockType === "time-slot" ? newBlockedDate.startTime : undefined,
+                  endTime: newBlockedDate.blockType === "time-slot" ? newBlockedDate.endTime : undefined,
+                } as BlockedDate)
+              : b
+          )
+        );
+      } else {
+        // Add new
+        const blocked: BlockedDate = {
+          id: nextId(),
+          date: newBlockedDate.date,
+          reason: newBlockedDate.reason,
+          blockType: newBlockedDate.blockType,
+          startTime: newBlockedDate.blockType === "time-slot" ? newBlockedDate.startTime : undefined,
+          endTime: newBlockedDate.blockType === "time-slot" ? newBlockedDate.endTime : undefined,
+        };
+        setBlockedDates([...blockedDates, blocked]);
+      }
+
       setShowBlockDate(false);
-      setNewBlockedDate({ date: "", reason: "" });
+      setNewBlockedDate({ id: "", date: "", reason: "", blockType: "full-day", startTime: "", endTime: "" });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     }
@@ -416,6 +525,13 @@ const AvailabilityPage = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <button
+                                  onClick={() => handleEditSlot(slot)}
+                                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400"
+                                  title="Edit slot"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
                                   onClick={() => handleCopySlot(slot)}
                                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                                   title="Duplicate slot"
@@ -477,27 +593,47 @@ const AvailabilityPage = () => {
                       className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="text-yellow-400" size={18} />
-                          <p className="font-semibold">
-                            {new Date(blocked.date).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}
-                          </p>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-500">
+                            {blocked.blockType === "time-slot" ? "Time Slot" : "Full Day"}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Calendar className="text-yellow-400" size={16} />
+                            <p className="font-semibold text-sm">
+                              {new Date(blocked.date).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )}
+                            </p>
+                          </div>
+                          {blocked.blockType === "time-slot" && (
+                            <p className="text-xs text-yellow-400 font-semibold mt-1">
+                              {blocked.startTime} – {blocked.endTime}
+                            </p>
+                          )}
                         </div>
-                        <button
-                          onClick={() => handleRemoveBlockedDate(blocked.id)}
-                          className="text-red-400 hover:text-red-500 transition-colors"
-                        >
-                          <X size={18} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditBlockedDate(blocked)}
+                            className="text-blue-400 hover:text-blue-500 transition-colors p-1"
+                            title="Edit block"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveBlockedDate(blocked.id)}
+                            className="text-red-400 hover:text-red-500 transition-colors p-1"
+                            title="Remove block"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-300">{blocked.reason}</p>
+                      <p className="text-sm text-gray-300 mt-2">{blocked.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -647,7 +783,9 @@ const AvailabilityPage = () => {
       {showBlockDate && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-brand-gray rounded-2xl max-w-md w-full p-6 border border-white/10">
-            <h3 className="text-2xl font-bold mb-6">Block a Date</h3>
+            <h3 className="text-2xl font-bold mb-6">
+              {newBlockedDate.id ? "Edit Blocked Date" : "Block a Date"}
+            </h3>
 
             <div className="space-y-4">
               <div>
@@ -665,6 +803,66 @@ const AvailabilityPage = () => {
                   className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Block Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewBlockedDate({ ...newBlockedDate, blockType: "full-day" })}
+                    className={`py-2 rounded-lg border-2 transition-all ${
+                      newBlockedDate.blockType === "full-day"
+                        ? "border-brand-red bg-brand-red/20 text-white"
+                        : "border-white/10 bg-black/40 hover:border-brand-red/50 text-gray-400"
+                    }`}
+                  >
+                    Entire Day
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewBlockedDate({ ...newBlockedDate, blockType: "time-slot" })}
+                    className={`py-2 rounded-lg border-2 transition-all ${
+                      newBlockedDate.blockType === "time-slot"
+                        ? "border-brand-red bg-brand-red/20 text-white"
+                        : "border-white/10 bg-black/40 hover:border-brand-red/50 text-gray-400"
+                    }`}
+                  >
+                    Specific Time Slots
+                  </button>
+                </div>
+              </div>
+
+              {newBlockedDate.blockType === "time-slot" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={newBlockedDate.startTime || ""}
+                      onChange={(e) =>
+                        setNewBlockedDate({ ...newBlockedDate, startTime: e.target.value })
+                      }
+                      className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      End Time
+                    </label>
+                    <input
+                      type="time"
+                      value={newBlockedDate.endTime || ""}
+                      onChange={(e) =>
+                        setNewBlockedDate({ ...newBlockedDate, endTime: e.target.value })
+                      }
+                      className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
@@ -689,7 +887,7 @@ const AvailabilityPage = () => {
               <button
                 onClick={() => {
                   setShowBlockDate(false);
-                  setNewBlockedDate({ date: "", reason: "" });
+                  setNewBlockedDate({ id: "", date: "", reason: "", blockType: "full-day", startTime: "", endTime: "" });
                 }}
                 className="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-lg transition-colors"
               >
@@ -700,7 +898,7 @@ const AvailabilityPage = () => {
                 disabled={!newBlockedDate.date || !newBlockedDate.reason}
                 className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Block Date
+                {newBlockedDate.id ? "Update Block" : "Block Date"}
               </button>
             </div>
           </div>

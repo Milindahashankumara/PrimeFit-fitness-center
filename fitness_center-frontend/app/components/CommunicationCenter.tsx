@@ -434,12 +434,6 @@ const CommunicationCenter = ({
               <Bell size={16} />
               {unreadCount} unread
             </div>
-            <Link
-              href={`/${mode === "admin" ? "dashboard/admin" : mode === "coach" ? "dashboard/coach" : "dashboard/customer"}`}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              Back to dashboard
-            </Link>
           </div>
         </div>
       </header>
@@ -724,7 +718,7 @@ const CommunicationCenter = ({
                               {isMine
                                 ? "You"
                                 : (message.sender as CommunicationRecipient)
-                                    ?.name || "Sender"}
+                                  ?.name || "Sender"}
                             </p>
                             <span className="text-xs text-gray-500">
                               {formatTime(message.createdAt)}
