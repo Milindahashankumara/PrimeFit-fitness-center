@@ -316,7 +316,6 @@ const CustomerSubscriptionsPage = () => {
           <div className="space-y-4">
             <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
-                <Layers3 className="text-brand-red" />
                 <h3 className="text-xl font-bold">Subscription status</h3>
               </div>
               <div className="space-y-3 text-sm">
@@ -349,7 +348,6 @@ const CustomerSubscriptionsPage = () => {
 
             <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
               <div className="flex items-center gap-3 mb-4">
-                <Wallet className="text-brand-red" />
                 <h3 className="text-xl font-bold">Billing summary</h3>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -373,7 +371,6 @@ const CustomerSubscriptionsPage = () => {
         <section className="grid lg:grid-cols-2 gap-6">
           <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
             <div className="flex items-center gap-3 mb-5">
-              <CreditCard className="text-brand-red" />
               <h3 className="text-xl font-bold">Pending bills</h3>
             </div>
             <div className="space-y-3">
@@ -403,7 +400,6 @@ const CustomerSubscriptionsPage = () => {
 
           <div className="bg-brand-gray rounded-3xl p-6 border border-white/10">
             <div className="flex items-center gap-3 mb-5">
-              <CalendarDays className="text-brand-red" />
               <h3 className="text-xl font-bold">Billing history</h3>
             </div>
             <div className="overflow-x-auto">
