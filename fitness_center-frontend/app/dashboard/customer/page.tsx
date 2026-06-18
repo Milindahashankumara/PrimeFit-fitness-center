@@ -1,12 +1,5 @@
-"use client";
-
 import React, { Suspense } from "react";
-import dynamic from "next/dynamic";
-
-const CustomerDashboard = dynamic(
-  () => import("./CustomerDashboard"),
-  { ssr: false }
-);
+import CustomerDashboard from "./CustomerDashboard";
 
 const CustomerDashboardPage = () => {
   return (

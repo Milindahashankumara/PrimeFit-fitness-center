@@ -1,12 +1,5 @@
-"use client";
-
 import React, { Suspense } from "react";
-import dynamic from "next/dynamic";
-
-const CommunicationCenter = dynamic(
-  () => import("@/app/components/CommunicationCenter"),
-  { ssr: false }
-);
+import CommunicationCenter from "@/app/components/CommunicationCenter";
 
 const CustomerMessagesPage = () => (
   <Suspense
