@@ -1,15 +1,5 @@
-"use client";
-
 import React, { Suspense } from "react";
 import CommunicationCenter from "@/app/components/CommunicationCenter";
-
-const CoachCommunicationPageContent = () => (
-  <CommunicationCenter
-    mode="coach"
-    title="Communication Center"
-    description="Talk to your customers, email admins, review inbox activity, and manage reply history."
-  />
-);
 
 const CoachCommunicationPage = () => (
   <Suspense
@@ -19,7 +9,11 @@ const CoachCommunicationPage = () => (
       </div>
     }
   >
-    <CoachCommunicationPageContent />
+    <CommunicationCenter
+      mode="coach"
+      title="Communication Center"
+      description="Talk to your customers, email admins, review inbox activity, and manage reply history."
+    />
   </Suspense>
 );
 

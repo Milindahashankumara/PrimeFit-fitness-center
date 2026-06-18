@@ -1,16 +1,5 @@
-"use client";
-
 import React, { Suspense } from "react";
 import CommunicationCenter from "@/app/components/CommunicationCenter";
-
-const AdminCommunicationsPageContent = () => (
-  <CommunicationCenter
-    mode="admin"
-    allowBroadcast
-    title="Communication Center"
-    description="Monitor all communications, send messages and broadcast announcements."
-  />
-);
 
 const AdminCommunicationsPage = () => (
   <Suspense
@@ -20,7 +9,12 @@ const AdminCommunicationsPage = () => (
       </div>
     }
   >
-    <AdminCommunicationsPageContent />
+    <CommunicationCenter
+      mode="admin"
+      allowBroadcast
+      title="Communication Center"
+      description="Monitor all communications, send messages and broadcast announcements."
+    />
   </Suspense>
 );
 
