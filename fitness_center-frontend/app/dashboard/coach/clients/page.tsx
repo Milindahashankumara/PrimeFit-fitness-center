@@ -313,9 +313,6 @@ const CoachClientsPage = () => {
                 <Users className="text-brand-red" />
                 Customer roster
               </h2>
-              <p className="text-sm text-gray-400">
-                Each card summarizes a real customer from your booking history.
-              </p>
             </div>
 
             <div className="relative w-full lg:max-w-sm">

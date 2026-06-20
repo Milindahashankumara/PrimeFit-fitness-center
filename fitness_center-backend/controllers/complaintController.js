@@ -100,7 +100,7 @@ exports.createComplaint = async (req, res) => {
   }
 };
 
-// Update complaint (Admin only)
+// Update complaint
 exports.updateComplaint = async (req, res) => {
   try {
     let complaint = await Complaint.findById(req.params.id);
@@ -112,19 +112,63 @@ exports.updateComplaint = async (req, res) => {
       });
     }
 
-    // Update fields
-    const { status, response, priority } = req.body;
-
-    if (status) complaint.status = status;
-    if (response) {
-      complaint.response = response;
-      complaint.responseDate = new Date();
+    // Check authorization
+    if (
+      req.user.role !== "admin" &&
+      complaint.customerEmail !== req.user.email
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this complaint",
+      });
     }
-    if (priority) complaint.priority = priority;
 
-    if (status === "resolved") {
-      complaint.resolvedBy = req.user.name;
-      complaint.responseDate = new Date();
+    if (req.user.role === "customer") {
+      // Customer update rules
+      if (complaint.status !== "pending") {
+        return res.status(400).json({
+          success: false,
+          message: "You can only update complaints with 'pending' status",
+        });
+      }
+
+      const { subject, category, description, priority } = req.body;
+
+      if (subject) complaint.subject = subject;
+      if (category) {
+        if (!['coach', 'facility', 'booking', 'billing', 'other'].includes(category)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid category",
+          });
+        }
+        complaint.category = category;
+      }
+      if (description) complaint.description = description;
+      if (priority) {
+        if (!['low', 'medium', 'high'].includes(priority)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid priority",
+          });
+        }
+        complaint.priority = priority;
+      }
+    } else {
+      // Admin update rules
+      const { status, response, priority } = req.body;
+
+      if (status) complaint.status = status;
+      if (response) {
+        complaint.response = response;
+        complaint.responseDate = new Date();
+      }
+      if (priority) complaint.priority = priority;
+
+      if (status === "resolved") {
+        complaint.resolvedBy = req.user.name;
+        complaint.responseDate = new Date();
+      }
     }
 
     await complaint.save();
@@ -161,6 +205,14 @@ exports.deleteComplaint = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this complaint",
+      });
+    }
+
+    // Customers can only delete/cancel pending complaints
+    if (req.user.role === "customer" && complaint.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only cancel pending complaints",
       });
     }
 

@@ -14,7 +14,8 @@ import {
   Calendar,
   FileText,
   AlertTriangle,
-  Shield
+  Shield,
+  X
 } from 'lucide-react';
 
 interface Complaint {
@@ -38,6 +39,19 @@ const ComplaintsPage = () => {
   const [activeTab, setActiveTab] = useState<'submit' | 'history'>('submit');
   const [showSuccess, setShowSuccess] = useState(false);
   
+  // Action/dialog states
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [updateFormData, setUpdateFormData] = useState({
+    subject: '',
+    category: 'coach',
+    description: '',
+    priority: 'medium'
+  });
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   // Form state
   const [formData, setFormData] = useState({
     subject: '',
@@ -49,36 +63,110 @@ const ComplaintsPage = () => {
   // Mock complaint history - will be loaded from API
   const [complaints, setComplaints] = useState<Complaint[]>([]);
 
+  const loadUserComplaints = async () => {
+    const userData = localStorage.getItem('user');
+    const user = userData ? JSON.parse(userData) : null;
+    
+    if (!user) {
+      console.log('No user found in localStorage');
+      return;
+    }
+
+    try {
+      console.log('Fetching complaints for:', user.email);
+      const apiComplaints = await ComplaintsAPI.getByCustomer(user.email);
+      console.log('Fetched complaints:', apiComplaints);
+      
+      // Ensure apiComplaints is an array
+      const complaintsArray = Array.isArray(apiComplaints) ? apiComplaints : [];
+      setComplaints(complaintsArray);
+    } catch (error) {
+      console.error('Failed to load complaints:', error);
+      setComplaints([]);
+    }
+  };
+
   // Load user's complaints from API on mount
   useEffect(() => {
-    const loadUserComplaints = async () => {
-      const userData = localStorage.getItem('user');
-      const user = userData ? JSON.parse(userData) : null;
-      
-      if (!user) {
-        console.log('No user found in localStorage');
-        return;
-      }
-
-      try {
-        console.log('Fetching complaints for:', user.email);
-        const apiComplaints = await ComplaintsAPI.getByCustomer(user.email);
-        console.log('Fetched complaints:', apiComplaints);
-        
-        // Ensure apiComplaints is an array
-        const complaintsArray = Array.isArray(apiComplaints) ? apiComplaints : [];
-        setComplaints(complaintsArray);
-      } catch (error) {
-        console.error('Failed to load complaints:', error);
-        setComplaints([]);
-      }
-    };
-
     loadUserComplaints();
     // Poll for updates every 5 seconds to catch admin responses
     const interval = setInterval(loadUserComplaints, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Clear toast message automatically
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  const handleUpdateClick = (complaint: Complaint) => {
+    setSelectedComplaint(complaint);
+    setUpdateFormData({
+      subject: complaint.subject,
+      category: complaint.category,
+      description: complaint.description,
+      priority: complaint.priority
+    });
+    setShowUpdateModal(true);
+  };
+
+  const handleCancelClick = (complaint: Complaint) => {
+    setSelectedComplaint(complaint);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedComplaint) return;
+    setIsActionLoading(true);
+    try {
+      await ComplaintsAPI.delete(selectedComplaint._id);
+      setToastMessage({ type: 'success', text: 'Complaint cancelled successfully!' });
+      // Update local state immediately to avoid waiting for polling
+      setComplaints(prev => prev.filter(c => c._id !== selectedComplaint._id));
+      setShowCancelModal(false);
+      setSelectedComplaint(null);
+    } catch (error) {
+      console.error('Failed to cancel complaint:', error);
+      setToastMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to cancel complaint. Please try again.' 
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleConfirmUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedComplaint) return;
+    setIsActionLoading(true);
+    try {
+      const updated = await ComplaintsAPI.update(selectedComplaint._id, {
+        subject: updateFormData.subject,
+        category: updateFormData.category,
+        description: updateFormData.description,
+        priority: updateFormData.priority as 'low' | 'medium' | 'high'
+      });
+      setToastMessage({ type: 'success', text: 'Complaint updated successfully!' });
+      // Update local state immediately
+      setComplaints(prev => prev.map(c => c._id === selectedComplaint._id ? { ...c, ...updated } : c));
+      setShowUpdateModal(false);
+      setSelectedComplaint(null);
+    } catch (error) {
+      console.error('Failed to update complaint:', error);
+      setToastMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to update complaint. Please try again.' 
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   const categories = [
     { value: 'coach', label: 'Coach Related', icon: User },
@@ -196,6 +284,20 @@ const ComplaintsPage = () => {
             <div>
               <p className="font-semibold text-green-400">Complaint submitted successfully!</p>
               <p className="text-sm text-green-300">We'll review your complaint and respond within 24-48 hours.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action toast messages */}
+        {toastMessage && (
+          <div className={`mb-6 border rounded-xl p-4 flex items-center gap-3 animate-pulse ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-500/20 border-green-500 text-green-400' 
+              : 'bg-red-500/20 border-red-500 text-red-400'
+          }`}>
+            {toastMessage.type === 'success' ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
+            <div>
+              <p className="font-semibold">{toastMessage.text}</p>
             </div>
           </div>
         )}
@@ -435,12 +537,18 @@ const ComplaintsPage = () => {
                       </div>
                     )}
 
-                    {complaint.status !== 'resolved' && (
+                    {complaint.status === 'pending' && (
                       <div className="mt-4 pt-4 border-t border-white/10 flex gap-2">
-                        <button className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors">
+                        <button 
+                          onClick={() => handleUpdateClick(complaint)}
+                          className="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-semibold transition-colors"
+                        >
                           Update Complaint
                         </button>
-                        <button className="px-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-lg font-semibold transition-colors">
+                        <button 
+                          onClick={() => handleCancelClick(complaint)}
+                          className="px-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-lg font-semibold transition-colors"
+                        >
                           Cancel
                         </button>
                       </div>
@@ -452,6 +560,166 @@ const ComplaintsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && selectedComplaint && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-brand-gray rounded-2xl max-w-md w-full p-6 border border-white/10">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="text-red-500" size={32} />
+            </div>
+
+            <h2 className="text-2xl font-bold text-center mb-2">
+              Cancel Complaint?
+            </h2>
+            <p className="text-gray-400 text-center mb-6">
+              Are you sure you want to cancel this complaint: "{selectedComplaint.subject}"? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedComplaint(null);
+                }}
+                disabled={isActionLoading}
+                className="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50"
+              >
+                No, Keep It
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={isActionLoading}
+                className="flex-1 bg-red-500 hover:bg-red-600 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isActionLoading && <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>}
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Complaint Modal */}
+      {showUpdateModal && selectedComplaint && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-brand-gray rounded-2xl max-w-2xl w-full p-6 border border-white/10 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Update Complaint</h2>
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowUpdateModal(false);
+                  setSelectedComplaint(null);
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmUpdate} className="space-y-6">
+              {/* Subject */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">Subject *</label>
+                <input
+                  type="text"
+                  value={updateFormData.subject}
+                  onChange={(e) => setUpdateFormData({ ...updateFormData, subject: e.target.value })}
+                  placeholder="Brief description of your complaint"
+                  required
+                  className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none"
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-semibold mb-3">Category *</label>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {categories.map((category) => {
+                    const Icon = category.icon;
+                    return (
+                      <button
+                        key={category.value}
+                        type="button"
+                        onClick={() => setUpdateFormData({ ...updateFormData, category: category.value })}
+                        className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                          updateFormData.category === category.value
+                            ? 'bg-brand-red border-brand-red text-white'
+                            : 'bg-black/40 border-white/10 hover:border-brand-red'
+                        }`}
+                      >
+                        <Icon size={20} />
+                        <span className="text-sm font-medium">{category.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-semibold mb-3">Priority Level</label>
+                <div className="flex gap-3">
+                  {priorities.map((priority) => (
+                    <button
+                      key={priority.value}
+                      type="button"
+                      onClick={() => setUpdateFormData({ ...updateFormData, priority: priority.value })}
+                      className={`flex-1 py-3 rounded-lg border-2 transition-all font-semibold ${
+                        updateFormData.priority === priority.value
+                          ? 'bg-brand-red border-brand-red text-white'
+                          : 'bg-black/40 border-white/10 hover:border-brand-red'
+                      }`}
+                    >
+                      <span className={updateFormData.priority === priority.value ? '' : priority.color}>
+                        {priority.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">Detailed Description *</label>
+                <textarea
+                  value={updateFormData.description}
+                  onChange={(e) => setUpdateFormData({ ...updateFormData, description: e.target.value })}
+                  placeholder="Please provide as much detail as possible about your complaint..."
+                  required
+                  rows={6}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-brand-red focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpdateModal(false);
+                    setSelectedComplaint(null);
+                  }}
+                  disabled={isActionLoading}
+                  className="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isActionLoading || !updateFormData.subject || !updateFormData.description}
+                  className="flex-1 bg-brand-red hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  {isActionLoading && <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

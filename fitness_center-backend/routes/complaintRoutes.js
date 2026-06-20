@@ -15,7 +15,7 @@ router.route('/')
 
 router.route('/:id')
   .get(protect, getComplaint)
-  .put(protect, authorize('admin'), updateComplaint)
+  .put(protect, authorize('admin', 'customer'), updateComplaint)
   .delete(protect, deleteComplaint);
 
 module.exports = router;
