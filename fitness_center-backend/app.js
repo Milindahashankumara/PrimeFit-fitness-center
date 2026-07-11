@@ -10,12 +10,28 @@ const corsOrigins = (process.env.CLIENT_URL || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Always allow these origins
+const defaultOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedOrigins = [...new Set([...defaultOrigins, ...corsOrigins])];
+
 app.use(
   cors({
-    origin:
-      corsOrigins.length > 0
-        ? corsOrigins
-        : ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (server-to-server, Postman, health checks)
+      if (!origin) return callback(null, true);
+
+      // Allow if origin is in the explicit list
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // Allow any Vercel preview/deployment URL for this project
+      if (origin.match(/^https:\/\/prime-fit-fitness-center.*\.vercel\.app$/)) {
+        return callback(null, true);
+      }
+
+      // Block everything else
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
