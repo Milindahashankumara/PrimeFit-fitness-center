@@ -35,6 +35,12 @@ app.use("/api/resources", require("./routes/resourceRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 
+console.log(`CORS enabled for origins: ${corsOrigins.length > 0 ? corsOrigins.join(", ") : "localhost:3000 (default)"}`);
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", message: "PrimeFit backend is healthy", timestamp: new Date().toISOString() });
+});
+
 app.get("/", (_req, res) => {
   res.json({
     success: true,
