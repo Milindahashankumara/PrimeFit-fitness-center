@@ -1,10 +1,10 @@
 const dotenv = require("dotenv");
+dotenv.config(); // MUST be first — loads env vars before any other module reads them
+
 const http = require("http");
 const connectDB = require("./config/db");
 const app = require("./app");
 const { initializeSocket } = require("./services/socket");
-
-dotenv.config();
 
 connectDB();
 

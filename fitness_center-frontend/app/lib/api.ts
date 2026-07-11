@@ -4,6 +4,8 @@ export const API_BASE_URL = (
   configuredApiUrl || "http://localhost:5000/api"
 ).replace(/\/+$/, "");
 
+console.log("DEBUG: Connecting to API Base URL:", API_BASE_URL);
+
 const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
@@ -30,10 +32,18 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     headers,
   });
 
+  const contentType = response.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+
   if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ message: "Request failed" }));
+    let errorMessage = "Request failed";
+    if (isJson) {
+      const errorData = await response.json().catch(() => ({}));
+      errorMessage = errorData.message || errorMessage;
+    } else {
+      const text = await response.text().catch(() => "");
+      errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
+    }
 
     if (response.status === 401) {
       if (typeof window !== "undefined") {
@@ -41,11 +51,15 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
       }
     }
 
-    throw new Error(error.message || "Request failed");
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
     return null;
+  }
+
+  if (!isJson) {
+    throw new Error(`Expected JSON response from ${url}, but received content-type: ${contentType}`);
   }
 
   return response.json();
