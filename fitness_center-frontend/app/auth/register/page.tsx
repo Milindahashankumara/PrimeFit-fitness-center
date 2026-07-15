@@ -29,20 +29,50 @@ const RegisterPage = () => {
     setError("");
   };
 
+  // Phone: only allow digits and optional leading +
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Strip everything except digits and a leading +
+    const cleaned = raw.replace(/[^0-9+]/g, "").replace(/(?!^)\+/g, "");
+    setFormData({ ...formData, phone: cleaned });
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    // Client-side validation
+
+    if (formData.name.trim().length < 2) {
+      setError("Name must be at least 2 characters.");
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setError("Please provide a valid email address.");
+      setLoading(false);
+      return;
+    }
+
+    const phoneRegex = /^\+?[0-9]{7,15}$/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      setError("Phone number must contain only digits (7–15 digits).");
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("Password must be at least 6 characters.");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -166,9 +196,12 @@ const RegisterPage = () => {
                   type="tel"
                   name="phone"
                   value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="Enter your phone number"
+                  onChange={handlePhoneChange}
+                  placeholder="e.g. 0771234567 or +94771234567"
                   required
+                  maxLength={16}
+                  pattern="^\+?[0-9]{7,15}$"
+                  inputMode="numeric"
                   className="w-full bg-black/40 border border-white/20 rounded-lg py-3 pl-10 text-white placeholder:text-gray-500 focus:outline-none focus:border-brand-red transition-colors"
                 />
               </div>

@@ -147,6 +147,28 @@ const userSchema = new mongoose.Schema({
   isAuthenticated: {
     type: Boolean,
     default: true
+  },
+  // Email verification fields
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: false
+  },
+  emailVerificationExpires: {
+    type: Date,
+    select: false
+  },
+  // Password reset fields
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
   }
 }, {
   timestamps: true

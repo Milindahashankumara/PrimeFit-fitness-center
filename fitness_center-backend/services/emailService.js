@@ -382,6 +382,110 @@ const sendCoachRescheduleEmail = async (booking, oldDate, oldTime, newDate, newT
   });
 };
 
+// Email Verification Template
+
+const buildEmailVerificationEmail = ({ name, verifyUrl }) => `
+  <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0c10; color: #ffffff; padding: 40px 10px; margin: 0;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #1f2833; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <div style="background-color: #0b0c10; border-bottom: 2px solid #ff4d4d; padding: 25px; text-align: center;">
+        <span style="color: #ff4d4d; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">PrimeFit</span>
+      </div>
+      <div style="padding: 30px 24px;">
+        <h2 style="margin-top: 0; margin-bottom: 15px; color: #ffffff; font-size: 20px;">Hello ${name},</h2>
+        <p style="color: #c5c6c7; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+          Welcome to PrimeFit! Please verify your email address to complete your registration.
+          This link will expire in <strong>24 hours</strong>.
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verifyUrl}" style="display: inline-block; background-color: #ff4d4d; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+            Verify Email Address
+          </a>
+        </div>
+        <p style="color: #888888; font-size: 13px; line-height: 1.5;">
+          If you did not create a PrimeFit account, you can safely ignore this email.
+        </p>
+        <p style="color: #666; font-size: 12px; margin-top: 16px; word-break: break-all;">
+          Or copy this link: ${verifyUrl}
+        </p>
+        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 30px 0 20px 0;" />
+        <p style="margin: 0; color: #888888; font-size: 13px; text-align: center;">
+          Thank you for choosing <strong>PrimeFit</strong>.<br/>
+          This is an automated notification. Please do not reply directly to this email.
+        </p>
+      </div>
+    </div>
+  </div>
+`;
+
+// Password Reset Template
+
+const buildPasswordResetEmail = ({ name, resetUrl }) => `
+  <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0c10; color: #ffffff; padding: 40px 10px; margin: 0;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #1f2833; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <div style="background-color: #0b0c10; border-bottom: 2px solid #ff4d4d; padding: 25px; text-align: center;">
+        <span style="color: #ff4d4d; font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">PrimeFit</span>
+      </div>
+      <div style="padding: 30px 24px;">
+        <h2 style="margin-top: 0; margin-bottom: 15px; color: #ffffff; font-size: 20px;">Hello ${name},</h2>
+        <p style="color: #c5c6c7; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+          We received a request to reset your PrimeFit password.
+          Click the button below to set a new password. This link will expire in <strong>1 hour</strong>.
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background-color: #ff4d4d; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #888888; font-size: 13px; line-height: 1.5;">
+          If you did not request a password reset, please ignore this email. Your password will not change.
+        </p>
+        <p style="color: #666; font-size: 12px; margin-top: 16px; word-break: break-all;">
+          Or copy this link: ${resetUrl}
+        </p>
+        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 30px 0 20px 0;" />
+        <p style="margin: 0; color: #888888; font-size: 13px; text-align: center;">
+          Thank you for choosing <strong>PrimeFit</strong>.<br/>
+          This is an automated notification. Please do not reply directly to this email.
+        </p>
+      </div>
+    </div>
+  </div>
+`;
+
+// Send Helpers
+
+/**
+ * Send email verification email to a newly registered user.
+ * @param {Object} user   - Mongoose user document { name, email }
+ * @param {string} rawToken - The raw (un-hashed) verification token
+ */
+const sendVerificationEmail = async (user, rawToken) => {
+  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const verifyUrl = `${appUrl}/auth/verify-email?token=${rawToken}`;
+
+  return sendEmail({
+    to: user.email,
+    subject: "Verify Your PrimeFit Email Address",
+    html: buildEmailVerificationEmail({ name: user.name, verifyUrl }),
+  });
+};
+
+/**
+ * Send password reset email.
+ * @param {Object} user   - Mongoose user document { name, email }
+ * @param {string} rawToken - The raw (un-hashed) reset token
+ */
+const sendPasswordResetEmail = async (user, rawToken) => {
+  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const resetUrl = `${appUrl}/auth/reset-password?token=${rawToken}`;
+
+  return sendEmail({
+    to: user.email,
+    subject: "Reset Your PrimeFit Password",
+    html: buildPasswordResetEmail({ name: user.name, resetUrl }),
+  });
+};
+
 module.exports = {
   sendEmail,
   buildMessageEmail,
@@ -393,4 +497,9 @@ module.exports = {
   sendCustomerRescheduleEmail,
   sendCoachCancellationEmail,
   sendCoachRescheduleEmail,
+  // New exports
+  buildEmailVerificationEmail,
+  buildPasswordResetEmail,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
 };
