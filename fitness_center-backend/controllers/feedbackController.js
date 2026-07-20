@@ -185,7 +185,7 @@ exports.createFeedback = async (req, res) => {
       });
     }
 
-    // Create feedback (auto-approved so it updates stats immediately and is visible)
+    // Create feedback as PENDING — admin must approve before it is visible
     const newFeedback = await Feedback.create({
       sessionId,
       coachId,
@@ -195,18 +195,11 @@ exports.createFeedback = async (req, res) => {
       customerEmail: req.user.email,
       rating,
       feedback: feedbackText,
-      status: "approved",
+      status: "pending",
       submittedDate: new Date(),
     });
 
-    // Update coach statistics dynamically from all approved reviews
-    const approvedReviews = await Feedback.find({ coachId, status: "approved" });
-    const count = approvedReviews.length;
-    const avg = count > 0 ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
-
-    coach.reviewCount = count;
-    coach.rating = avg;
-    await coach.save();
+    // Coach stats are NOT updated here — they are updated when admin approves
 
     res.status(201).json({
       success: true,
@@ -244,15 +237,30 @@ exports.updateFeedback = async (req, res) => {
       feedback.rejectionReason = rejectionReason;
     }
 
-    // If approved, update coach rating
-    if (status === "approved") {
-      const coach = await User.findById(feedback.coachId);
-      if (coach) {
-        const totalRating = coach.rating * coach.reviewCount + feedback.rating;
-        coach.reviewCount += 1;
-        coach.rating = totalRating / coach.reviewCount;
-        await coach.save();
-      }
+    // Recalculate coach stats from all approved reviews to stay accurate
+    const coach = await User.findById(feedback.coachId);
+    if (coach) {
+      const approvedReviews = await Feedback.find({
+        coachId: feedback.coachId,
+        status: "approved",
+        _id: { $ne: feedback._id }, // exclude current doc before it's saved
+      });
+
+      // If the new status is "approved", include this review in the calculation
+      const allApproved =
+        status === "approved"
+          ? [...approvedReviews, { rating: feedback.rating }]
+          : approvedReviews;
+
+      const count = allApproved.length;
+      const avg =
+        count > 0
+          ? allApproved.reduce((sum, r) => sum + r.rating, 0) / count
+          : 0;
+
+      coach.reviewCount = count;
+      coach.rating = avg;
+      await coach.save();
     }
 
     await feedback.save();
