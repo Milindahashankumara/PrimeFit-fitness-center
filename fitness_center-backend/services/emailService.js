@@ -20,7 +20,19 @@ const getTransporter = () =>
       user: process.env.SMTP_USER,
       pass: normalizePassword(process.env.SMTP_PASS),
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
   });
+
+// Safely extract an ObjectId string from a value that may be
+// a populated Mongoose document or a raw ObjectId / string.
+const toObjectIdString = (value) => {
+  if (!value) return null;
+  // Populated Mongoose document has ._id
+  if (value._id) return String(value._id);
+  return String(value);
+};
 
 const getFromAddress = () =>
   process.env.SMTP_FROM ||
@@ -189,9 +201,13 @@ const sendCustomerCancellationEmail = async (booking, cancellationReason) => {
   if (!booking) throw new Error("Booking exists check failed: Booking is required");
   
   const User = require("../models/User");
+  // Safely extract ObjectId in case the field is a populated document
+  const coachIdStr = toObjectIdString(booking.coachId);
+  const customerIdStr = toObjectIdString(booking.customerId);
+
   const [coach, customer] = await Promise.all([
-    User.findById(booking.coachId),
-    User.findById(booking.customerId)
+    User.findById(coachIdStr),
+    User.findById(customerIdStr)
   ]);
   
   if (!coach) throw new Error("Coach exists check failed: Coach not found");
@@ -242,9 +258,13 @@ const sendCustomerRescheduleEmail = async (booking, oldDate, oldTime, newDate, n
   if (!booking) throw new Error("Booking exists check failed: Booking is required");
   
   const User = require("../models/User");
+  // Safely extract ObjectId in case the field is a populated document
+  const coachIdStr = toObjectIdString(booking.coachId);
+  const customerIdStr = toObjectIdString(booking.customerId);
+
   const [coach, customer] = await Promise.all([
-    User.findById(booking.coachId),
-    User.findById(booking.customerId)
+    User.findById(coachIdStr),
+    User.findById(customerIdStr)
   ]);
   
   if (!coach) throw new Error("Coach exists check failed: Coach not found");
@@ -290,9 +310,13 @@ const sendCoachCancellationEmail = async (booking) => {
   if (!booking) throw new Error("Booking exists check failed: Booking is required");
   
   const User = require("../models/User");
+  // Safely extract ObjectId in case the field is a populated document
+  const coachIdStr = toObjectIdString(booking.coachId);
+  const customerIdStr = toObjectIdString(booking.customerId);
+
   const [coach, customer] = await Promise.all([
-    User.findById(booking.coachId),
-    User.findById(booking.customerId)
+    User.findById(coachIdStr),
+    User.findById(customerIdStr)
   ]);
   
   if (!coach) throw new Error("Coach exists check failed: Coach not found");
@@ -338,9 +362,13 @@ const sendCoachRescheduleEmail = async (booking, oldDate, oldTime, newDate, newT
   if (!booking) throw new Error("Booking exists check failed: Booking is required");
   
   const User = require("../models/User");
+  // Safely extract ObjectId in case the field is a populated document
+  const coachIdStr = toObjectIdString(booking.coachId);
+  const customerIdStr = toObjectIdString(booking.customerId);
+
   const [coach, customer] = await Promise.all([
-    User.findById(booking.coachId),
-    User.findById(booking.customerId)
+    User.findById(coachIdStr),
+    User.findById(customerIdStr)
   ]);
   
   if (!coach) throw new Error("Coach exists check failed: Coach not found");
@@ -460,8 +488,15 @@ const buildPasswordResetEmail = ({ name, resetUrl }) => `
  * @param {string} rawToken - The raw (un-hashed) verification token
  */
 const sendVerificationEmail = async (user, rawToken) => {
-  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
-  const verifyUrl = `${appUrl}/auth/verify-email?token=${rawToken}`;
+  // Use CLIENT_URL (the real frontend URL) so the link works for external users.
+  // Falls back to APP_URL and then localhost only for local development.
+  const frontendUrl = (
+    process.env.CLIENT_URL?.split(",")[0]?.trim() ||
+    process.env.APP_URL ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+
+  const verifyUrl = `${frontendUrl}/auth/verify-email?token=${rawToken}`;
 
   return sendEmail({
     to: user.email,
@@ -476,8 +511,14 @@ const sendVerificationEmail = async (user, rawToken) => {
  * @param {string} rawToken - The raw (un-hashed) reset token
  */
 const sendPasswordResetEmail = async (user, rawToken) => {
-  const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
-  const resetUrl = `${appUrl}/auth/reset-password?token=${rawToken}`;
+  // Use CLIENT_URL (the real frontend URL) so the link works for external users.
+  const frontendUrl = (
+    process.env.CLIENT_URL?.split(",")[0]?.trim() ||
+    process.env.APP_URL ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+
+  const resetUrl = `${frontendUrl}/auth/reset-password?token=${rawToken}`;
 
   return sendEmail({
     to: user.email,
