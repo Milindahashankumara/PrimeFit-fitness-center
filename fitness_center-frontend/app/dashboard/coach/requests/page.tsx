@@ -91,6 +91,9 @@ const BookingRequestsPage = () => {
   });
   const [successMessage, setSuccessMessage] = useState("");
   const socketRef = useRef<Socket | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancellingRequest, setCancellingRequest] = useState<BookingRequest | null>(null);
 
   const loadBookings = useCallback(async () => {
     const userData = localStorage.getItem("user");
@@ -249,6 +252,42 @@ const BookingRequestsPage = () => {
     }
   };
 
+  const handleCancelSession = (request: BookingRequest) => {
+    setCancellingRequest(request);
+    setCancelReason("");
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancelSession = async () => {
+    if (!cancellingRequest) return;
+    try {
+      await BookingsAPI.update(cancellingRequest._id, {
+        status: "cancelled",
+        cancelledBy: "coach",
+        cancelledAt: new Date().toISOString(),
+        ...(cancelReason ? { cancellationReason: cancelReason } : {}),
+      });
+
+      setBookingRequests(
+        bookingRequests.map((req) =>
+          req._id === cancellingRequest._id
+            ? { ...req, status: "cancelled", cancellationReason: cancelReason || undefined }
+            : req
+        )
+      );
+
+      setShowCancelModal(false);
+      setCancellingRequest(null);
+      setCancelReason("");
+      setSuccessMessage("Session cancelled. The customer will be notified by email.");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 4000);
+    } catch (error) {
+      console.error("Failed to cancel session:", error);
+      alert("Failed to cancel session. Please try again.");
+    }
+  };
+
   const handleApproveReschedule = async (request: BookingRequest) => {
     if (!request.rescheduleRequest) return;
 
@@ -321,10 +360,15 @@ const BookingRequestsPage = () => {
   const handleConfirmAction = async () => {
     if (selectedRequest) {
       try {
-        // Update booking status in API using MongoDB _id
-        await BookingsAPI.update(selectedRequest._id, {
+        // Build update payload — include rejectionReason when rejecting
+        const payload: Record<string, string> = {
           status: actionType === "accept" ? "accepted" : "rejected",
-        });
+        };
+        if (actionType === "reject" && responseMessage.trim()) {
+          payload.rejectionReason = responseMessage.trim();
+        }
+
+        await BookingsAPI.update(selectedRequest._id, payload);
 
         // Update local state
         setBookingRequests(
@@ -342,10 +386,12 @@ const BookingRequestsPage = () => {
         setSelectedRequest(null);
         setResponseMessage("");
         setSuccessMessage(
-          `Booking request ${actionType === "accept" ? "accepted" : "rejected"} successfully!`,
+          actionType === "accept"
+            ? "Booking accepted! The customer has been notified."
+            : "Booking rejected. The customer will be notified by email.",
         );
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        setTimeout(() => setShowSuccess(false), 4000);
       } catch (error) {
         console.error("Failed to update booking:", error);
         alert("Failed to update booking status");
@@ -837,6 +883,13 @@ const BookingRequestsPage = () => {
                         <Calendar size={18} />
                         Reschedule
                       </button>
+                      <button
+                        onClick={() => handleCancelSession(request)}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <X size={18} />
+                        Cancel Session
+                      </button>
                     </div>
                   )}
 
@@ -1040,6 +1093,64 @@ const BookingRequestsPage = () => {
                 className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-semibold transition-colors"
               >
                 Confirm Reschedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Cancel Session Modal */}
+      {showCancelModal && cancellingRequest && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-brand-gray rounded-2xl max-w-lg w-full p-6 border border-white/10">
+            <h3 className="text-2xl font-bold mb-2 text-red-400">Cancel Session</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              You are about to cancel the session with{" "}
+              <strong className="text-white">{cancellingRequest.clientName}</strong> on{" "}
+              <strong className="text-white">
+                {new Date(cancellingRequest.date).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </strong>{" "}
+              at <strong className="text-white">{cancellingRequest.time}</strong>.
+            </p>
+
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg mb-4">
+              <p className="text-red-400 text-sm">
+                ⚠️ The customer will receive an email notification about this cancellation.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">
+                Reason for cancellation (optional)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Let the customer know why you are cancelling..."
+                rows={3}
+                className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-red-500 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancellingRequest(null);
+                  setCancelReason("");
+                }}
+                className="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-lg transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={handleConfirmCancelSession}
+                className="flex-1 bg-red-500 hover:bg-red-600 py-3 rounded-lg font-semibold transition-colors"
+              >
+                Confirm Cancellation
               </button>
             </div>
           </div>

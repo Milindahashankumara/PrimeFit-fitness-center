@@ -104,7 +104,9 @@ const bookingSchema = new mongoose.Schema({
   cancelledBy: {
     type: String,
     enum: ['customer', 'coach', 'admin']
-  }
+  },
+  // Rejection fields
+  rejectionReason: String
 }, {
   timestamps: true
 });

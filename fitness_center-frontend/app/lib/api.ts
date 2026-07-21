@@ -106,6 +106,7 @@ export interface Booking {
   cancellationReason?: string;
   cancelledAt?: string;
   cancelledBy?: "customer" | "coach" | "admin";
+  rejectionReason?: string;
   [key: string]: any;
 }
 

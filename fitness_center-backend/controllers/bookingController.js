@@ -9,6 +9,7 @@ const {
   sendCustomerCancellationEmail,
   sendCustomerRescheduleEmail,
   sendCoachCancellationEmail,
+  sendCoachRejectionEmail,
   sendCoachRescheduleEmail,
 } = require("../services/emailService");
 
@@ -43,30 +44,48 @@ const handleBookingCancellation = async (booking) => {
     ? ` Reason: ${booking.cancellationReason}`
     : "";
 
-  emitToUser(coachId, "bookingCancelled", {
-    bookingId: String(booking._id),
-    customerId,
-    coachId,
-    status: "cancelled",
-  });
+  const cancelledByCoach = booking.cancelledBy === "coach";
 
-  const coachNotification = await Notification.create({
-    user: coachId,
-    type: "system",
-    title: "Session cancelled",
-    body: `${booking.customerName} cancelled their ${booking.sessionType} session scheduled for ${sessionDetails}.${reasonText}`,
-    actionUrl: `${appUrl}/dashboard/coach/requests`,
-  });
-  emitToUser(coachId, "notification:received", coachNotification);
+  // Notify the party that did NOT cancel (they need to know the session is gone)
+  if (cancelledByCoach) {
+    // Coach cancelled → notify customer via socket
+    emitToUser(customerId, "bookingCancelled", {
+      bookingId: String(booking._id),
+      customerId,
+      coachId,
+      status: "cancelled",
+    });
+  } else {
+    // Customer cancelled → notify coach via socket
+    emitToUser(coachId, "bookingCancelled", {
+      bookingId: String(booking._id),
+      customerId,
+      coachId,
+      status: "cancelled",
+    });
+  }
 
-  const customerNotification = await Notification.create({
-    user: customerId,
-    type: "system",
-    title: "Booking cancelled",
-    body: `Your session with ${booking.coachName} on ${sessionDetails} has been cancelled.`,
-    actionUrl: `${appUrl}/dashboard/customer/bookings`,
-  });
-  emitToUser(customerId, "notification:received", customerNotification);
+  if (cancelledByCoach) {
+    // Coach cancelled → create notification for customer
+    const customerNotification = await Notification.create({
+      user: customerId,
+      type: "system",
+      title: "Session cancelled by coach",
+      body: `Your ${booking.sessionType} session with ${booking.coachName} on ${sessionDetails} has been cancelled by the coach.${reasonText}`,
+      actionUrl: `${appUrl}/dashboard/customer/bookings`,
+    });
+    emitToUser(customerId, "notification:received", customerNotification);
+  } else {
+    // Customer cancelled → create notification for coach
+    const coachNotification = await Notification.create({
+      user: coachId,
+      type: "system",
+      title: "Session cancelled",
+      body: `${booking.customerName} cancelled their ${booking.sessionType} session scheduled for ${sessionDetails}.${reasonText}`,
+      actionUrl: `${appUrl}/dashboard/coach/requests`,
+    });
+    emitToUser(coachId, "notification:received", coachNotification);
+  }
 };
 
 // Get all bookings (with filters)
@@ -399,6 +418,15 @@ exports.updateBooking = async (req, res) => {
           updateData[key] = req.body[key];
         }
       });
+      // Automatically stamp cancellation metadata when coach cancels
+      if (req.body.status === "cancelled") {
+        updateData.cancelledBy = "coach";
+        updateData.cancelledAt = new Date();
+      }
+      // Store rejection reason if coach rejects
+      if (req.body.status === "rejected" && req.body.rejectionReason) {
+        updateData.rejectionReason = req.body.rejectionReason;
+      }
     } else if (req.user.role === "customer") {
       if (booking.customerId.toString() !== req.user.id) {
         return res.status(403).json({
@@ -460,15 +488,64 @@ exports.updateBooking = async (req, res) => {
       });
 
       // Trigger cancellation emails
-      if (req.user.role === "customer" || updatedBooking.cancelledBy === "customer") {
-        sendCustomerCancellationEmail(updatedBooking, updatedBooking.cancellationReason).catch((error) => {
-          console.error("Failed to send customer cancellation email:", error);
+      // Re-read cancelledBy from updateData (freshly set above) since updatedBooking
+      // might not reflect fields set in the same request cycle on some Mongoose versions.
+      const cancelledByRole = updateData.cancelledBy || updatedBooking.cancelledBy;
+      console.log("[Cancellation Email] cancelledByRole:", cancelledByRole, "| req.user.role:", req.user.role);
+      console.log("[Cancellation Email] updatedBooking.customerId:", updatedBooking.customerId);
+      console.log("[Cancellation Email] updatedBooking.coachId:", updatedBooking.coachId);
+      if (cancelledByRole === "coach" || req.user.role === "coach") {
+        // Coach cancelled → email the customer
+        console.log("[Cancellation Email] Sending coach cancellation email to customer...");
+        sendCoachCancellationEmail(updatedBooking).then((result) => {
+          if (result && result.skipped) {
+            console.warn("[Cancellation Email] SKIPPED — SMTP not configured");
+          } else {
+            console.log("[Cancellation Email] SUCCESS — sent:", result?.messageId);
+          }
+        }).catch((error) => {
+          console.error("[Cancellation Email] FAILED — coach→customer email error:");
+          console.error("  message:", error.message);
+          console.error("  stack:", error.stack);
         });
-      } else if (req.user.role === "coach" || updatedBooking.cancelledBy === "coach") {
-        sendCoachCancellationEmail(updatedBooking).catch((error) => {
-          console.error("Failed to send coach cancellation email:", error);
+      } else if (cancelledByRole === "customer" || req.user.role === "customer") {
+        // Customer cancelled → email the coach
+        console.log("[Cancellation Email] Sending customer cancellation email to coach...");
+        sendCustomerCancellationEmail(updatedBooking, updatedBooking.cancellationReason).then((result) => {
+          if (result && result.skipped) {
+            console.warn("[Cancellation Email] SKIPPED — SMTP not configured");
+          } else {
+            console.log("[Cancellation Email] SUCCESS — sent:", result?.messageId);
+          }
+        }).catch((error) => {
+          console.error("[Cancellation Email] FAILED — customer→coach email error:");
+          console.error("  message:", error.message);
+          console.error("  stack:", error.stack);
         });
+      } else {
+        console.warn("[Cancellation Email] No email triggered — cancelledByRole:", cancelledByRole, "user role:", req.user.role);
       }
+    }
+
+    // Trigger rejection email when coach rejects a booking
+    if (
+      updatedBooking &&
+      updatedBooking.status === "rejected" &&
+      booking.status !== "rejected" &&
+      req.user.role === "coach"
+    ) {
+      const rejectionReason = updateData.rejectionReason || req.body.rejectionReason || "";
+      console.log("[Rejection Email] Sending rejection email to customer...");
+      sendCoachRejectionEmail(updatedBooking, rejectionReason).then((result) => {
+        if (result && result.skipped) {
+          console.warn("[Rejection Email] SKIPPED — SMTP not configured");
+        } else {
+          console.log("[Rejection Email] SUCCESS — sent:", result?.messageId);
+        }
+      }).catch((error) => {
+        console.error("[Rejection Email] FAILED:", error.message);
+        console.error("  stack:", error.stack);
+      });
     }
 
     // Customer reschedules (requests reschedule)

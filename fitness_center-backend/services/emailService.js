@@ -358,6 +358,62 @@ const sendCoachCancellationEmail = async (booking) => {
   });
 };
 
+const sendCoachRejectionEmail = async (booking, rejectionReason) => {
+  if (!booking) throw new Error("Booking exists check failed: Booking is required");
+
+  const User = require("../models/User");
+  const coachIdStr = toObjectIdString(booking.coachId);
+  const customerIdStr = toObjectIdString(booking.customerId);
+
+  const [coach, customer] = await Promise.all([
+    User.findById(coachIdStr),
+    User.findById(customerIdStr)
+  ]);
+
+  if (!coach) throw new Error("Coach not found");
+  if (!customer) throw new Error("Customer not found");
+
+  const recipientEmail = customer.email || booking.customerEmail;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    throw new Error("Recipient email address is invalid");
+  }
+
+  const appUrl = process.env.CLIENT_URL?.split(",")[0]?.trim() || "http://localhost:3000";
+
+  const messageLines = [
+    `We regret to inform you that coach <strong>${coach.name}</strong> has reviewed your booking request and is unable to accept it at this time.`,
+    `Please see the details of your request below.`
+  ];
+
+  const bookingDetails = [
+    { label: "Coach Name", value: coach.name },
+    { label: "Session Date", value: booking.date },
+    { label: "Session Time", value: booking.time },
+    { label: "Session Type", value: booking.sessionType || booking.type || "personal" },
+    { label: "Duration", value: `${booking.duration || 60} minutes` }
+  ];
+
+  if (rejectionReason) {
+    bookingDetails.push({ label: "Reason", value: rejectionReason });
+  }
+
+  const html = buildBookingEmailTemplate({
+    recipientName: customer.name,
+    title: "Your Booking Request Was Declined",
+    messageLines,
+    bookingDetails,
+    status: "Cancelled",
+    actionUrl: `${appUrl}/dashboard/customer/bookings`,
+    actionText: "View My Bookings"
+  });
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: "Your Booking Request Has Been Declined",
+    html
+  });
+};
+
 const sendCoachRescheduleEmail = async (booking, oldDate, oldTime, newDate, newTime) => {
   if (!booking) throw new Error("Booking exists check failed: Booking is required");
   
@@ -537,6 +593,7 @@ module.exports = {
   sendCustomerCancellationEmail,
   sendCustomerRescheduleEmail,
   sendCoachCancellationEmail,
+  sendCoachRejectionEmail,
   sendCoachRescheduleEmail,
   // New exports
   buildEmailVerificationEmail,
